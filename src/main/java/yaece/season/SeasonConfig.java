@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -57,6 +58,12 @@ public final class SeasonConfig {
   private final Map<String, StaticObstacleSpec> obstacleById;
   private final Map<String, RestrictedZoneSpec> restrictedZoneById;
   private final Map<String, ScoringObjectiveSpec> objectiveById;
+  private final Map<AllianceSide, Map<String, List<Translation2d>>> obstaclePolyCache =
+      new EnumMap<>(AllianceSide.class);
+  private final Map<AllianceSide, Map<String, List<Translation2d>>> zonePolyCache =
+      new EnumMap<>(AllianceSide.class);
+  private final Map<AllianceSide, Map<String, List<Translation2d>>> defensePolyCache =
+      new EnumMap<>(AllianceSide.class);
 
   public SeasonConfig(
       int schemaVersion,
@@ -89,6 +96,33 @@ public final class SeasonConfig {
     this.scoringObjectives = scoringObjectives == null ? List.of() : List.copyOf(scoringObjectives);
     this.defenseDefaults = defenseDefaults == null ? DefenseConfigSpec.DEFAULT : defenseDefaults;
     this.scoringIntervals = scoringIntervals == null ? List.of() : List.copyOf(scoringIntervals);
+    for (AllianceSide side : AllianceSide.values()) {
+      Map<String, List<Translation2d>> obsMap = new HashMap<>();
+      for (StaticObstacleSpec obs : this.staticObstacles) {
+        obsMap.put(
+            obs.id(),
+            List.copyOf(obs.verticesFor(side, fieldLengthMeters, fieldWidthMeters, mirrorMode)));
+      }
+      obstaclePolyCache.put(side, Map.copyOf(obsMap));
+
+      Map<String, List<Translation2d>> zMap = new HashMap<>();
+      for (RestrictedZoneSpec z : this.restrictedZones) {
+        zMap.put(
+            z.id(),
+            List.copyOf(z.verticesFor(side, fieldLengthMeters, fieldWidthMeters, mirrorMode)));
+      }
+      zonePolyCache.put(side, Map.copyOf(zMap));
+
+      Map<String, List<Translation2d>> dMap = new HashMap<>();
+      for (DefenseZoneSpec dz : this.defenseDefaults.defenseZones()) {
+        dMap.put(
+            dz.id(),
+            List.copyOf(
+                FieldMirroring.mirrorPolygon(
+                    dz.blueVertices(), side, fieldLengthMeters, fieldWidthMeters, mirrorMode)));
+      }
+      defensePolyCache.put(side, Map.copyOf(dMap));
+    }
 
     List<String> violations = new ArrayList<>();
     Map<String, GamePieceSpec> pById = new LinkedHashMap<>();
@@ -231,6 +265,41 @@ public final class SeasonConfig {
         && point.getX() <= fieldLengthMeters + marginMeters
         && point.getY() >= -marginMeters
         && point.getY() <= fieldWidthMeters + marginMeters;
+  }
+
+  /**
+   * Returns cached, immutable mirrored vertices for {@code obs} on {@code alliance} (zero 50 Hz
+   * allocation).
+   */
+  public List<Translation2d> resolvedObstaclePolygon(
+      StaticObstacleSpec obs, AllianceSide alliance) {
+    List<Translation2d> cached = obstaclePolyCache.get(alliance).get(obs.id());
+    return cached != null
+        ? cached
+        : obs.verticesFor(alliance, fieldLengthMeters, fieldWidthMeters, mirrorMode);
+  }
+
+  /**
+   * Returns cached, immutable mirrored vertices for {@code zone} on {@code alliance} (zero 50 Hz
+   * allocation).
+   */
+  public List<Translation2d> resolvedZonePolygon(RestrictedZoneSpec zone, AllianceSide alliance) {
+    List<Translation2d> cached = zonePolyCache.get(alliance).get(zone.id());
+    return cached != null
+        ? cached
+        : zone.verticesFor(alliance, fieldLengthMeters, fieldWidthMeters, mirrorMode);
+  }
+
+  /**
+   * Returns cached, immutable mirrored vertices for {@code dz} on {@code alliance} (zero 50 Hz
+   * allocation).
+   */
+  public List<Translation2d> resolvedDefenseZonePolygon(DefenseZoneSpec dz, AllianceSide alliance) {
+    List<Translation2d> cached = defensePolyCache.get(alliance).get(dz.id());
+    return cached != null
+        ? cached
+        : FieldMirroring.mirrorPolygon(
+            dz.blueVertices(), alliance, fieldLengthMeters, fieldWidthMeters, mirrorMode);
   }
 
   public Pose3d resolveSitePose(ScoringSiteSpec site, AllianceSide alliance) {

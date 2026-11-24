@@ -105,8 +105,11 @@ public final class FieldWorldModel {
   private final List<PieceTrack> pieceTracks = new ArrayList<>();
   private final List<RobotTrack> robotTracks = new ArrayList<>();
 
+  private final Object ingestionLock = new Object();
   private final List<GamePieceObservation6DoF> pendingPieces = new ArrayList<>();
   private final List<RobotObservation> pendingRobots = new ArrayList<>();
+  private final List<GamePieceObservation6DoF> scratchPieces = new ArrayList<>();
+  private final List<RobotObservation> scratchRobots = new ArrayList<>();
 
   private int nextPieceTrackId = 1;
   private int nextRobotTrackId = 1;
@@ -125,15 +128,19 @@ public final class FieldWorldModel {
 
   /** Queues a batch of 6-DoF (or monocular-fallback) game-piece observations for the next step. */
   public void addGamePieceObservations(List<GamePieceObservation6DoF> observations) {
-    if (observations != null) {
-      pendingPieces.addAll(observations);
+    if (observations != null && !observations.isEmpty()) {
+      synchronized (ingestionLock) {
+        pendingPieces.addAll(observations);
+      }
     }
   }
 
   /** Queues a batch of robot observations (camera, 2D LiDAR, or fused) for the next step. */
   public void addRobotObservations(List<RobotObservation> observations) {
-    if (observations != null) {
-      pendingRobots.addAll(observations);
+    if (observations != null && !observations.isEmpty()) {
+      synchronized (ingestionLock) {
+        pendingRobots.addAll(observations);
+      }
     }
   }
 
@@ -169,10 +176,16 @@ public final class FieldWorldModel {
       rt.existConf *= Math.exp(-dt / ROBOT_MAX_OCCLUDED_SEC);
     }
 
-    // 2. Associate & update game pieces
+    // 2. Atomically drain cross-thread observation queues & associate
+    scratchPieces.clear();
+    scratchRobots.clear();
+    synchronized (ingestionLock) {
+      scratchPieces.addAll(pendingPieces);
+      pendingPieces.clear();
+      scratchRobots.addAll(pendingRobots);
+      pendingRobots.clear();
+    }
     processPendingPieces(nowSec);
-
-    // 3. Associate & update other robots (2-mode IMM)
     processPendingRobots(nowSec);
 
     // 4. Prune expired tracks
@@ -244,8 +257,12 @@ public final class FieldWorldModel {
     pinGuard.reset();
     pieceTracks.clear();
     robotTracks.clear();
-    pendingPieces.clear();
-    pendingRobots.clear();
+    synchronized (ingestionLock) {
+      pendingPieces.clear();
+      pendingRobots.clear();
+    }
+    scratchPieces.clear();
+    scratchRobots.clear();
     lastStepSec = -1.0;
     snapshot = WorldSnapshot.EMPTY;
   }
@@ -255,14 +272,14 @@ public final class FieldWorldModel {
   // -------------------------------------------------------------------------
 
   private void processPendingPieces(double nowSec) {
-    if (pendingPieces.isEmpty()) {
+    if (scratchPieces.isEmpty()) {
       return;
     }
-    List<GamePieceObservation6DoF> valid = new ArrayList<>(pendingPieces.size());
-    List<Pose3d> fieldPoses = new ArrayList<>(pendingPieces.size());
-    List<GamePieceSpec> specs = new ArrayList<>(pendingPieces.size());
+    List<GamePieceObservation6DoF> valid = new ArrayList<>(scratchPieces.size());
+    List<Pose3d> fieldPoses = new ArrayList<>(scratchPieces.size());
+    List<GamePieceSpec> specs = new ArrayList<>(scratchPieces.size());
 
-    for (GamePieceObservation6DoF obs : pendingPieces) {
+    for (GamePieceObservation6DoF obs : scratchPieces) {
       if ((nowSec - obs.timestampSec()) > MAX_OBSERVATION_LATENCY_SEC) {
         continue;
       }
@@ -278,7 +295,7 @@ public final class FieldWorldModel {
       fieldPoses.add(fp);
       specs.add(specOpt.get());
     }
-    pendingPieces.clear();
+    scratchPieces.clear();
 
     if (valid.isEmpty()) {
       return;
@@ -353,13 +370,13 @@ public final class FieldWorldModel {
   }
 
   private void processPendingRobots(double nowSec) {
-    if (pendingRobots.isEmpty()) {
+    if (scratchRobots.isEmpty()) {
       return;
     }
-    List<RobotObservation> valid = new ArrayList<>(pendingRobots.size());
-    List<Pose3d> fieldPoses = new ArrayList<>(pendingRobots.size());
+    List<RobotObservation> valid = new ArrayList<>(scratchRobots.size());
+    List<Pose3d> fieldPoses = new ArrayList<>(scratchRobots.size());
 
-    for (RobotObservation obs : pendingRobots) {
+    for (RobotObservation obs : scratchRobots) {
       if ((nowSec - obs.timestampSec()) > MAX_OBSERVATION_LATENCY_SEC) {
         continue;
       }
@@ -370,7 +387,7 @@ public final class FieldWorldModel {
       valid.add(obs);
       fieldPoses.add(fp);
     }
-    pendingRobots.clear();
+    scratchRobots.clear();
 
     if (valid.isEmpty()) {
       return;

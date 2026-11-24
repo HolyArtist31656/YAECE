@@ -66,7 +66,6 @@ tasks.withType(JavaCompile).configureEach {
 tasks.named('test') {
   useJUnitPlatform()
   maxHeapSize = '256m'
-  jvmArgs '--add-opens=java.base/jdk.internal.vm=ALL-UNNAMED'
   testLogging {
     events 'passed', 'skipped', 'failed'
     exceptionFormat = 'full'

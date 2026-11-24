@@ -7,10 +7,13 @@ import org.wpilib.math.geometry.Rotation3d;
 import org.wpilib.math.geometry.Translation3d;
 
 /**
- * Fixed-capacity ring buffer of timestamped ego {@link Pose3d} samples supporting exact
- * latency-compensated pose lookup via linear translation + quaternion SLERP interpolation.
+ * Thread-safe, fixed-capacity ring buffer of timestamped ego {@link Pose3d} samples supporting
+ * latency-compensated pose lookup, windowed peak angular-rate queries (FRC 254), and pitch/roll
+ * bump-traversal odometry attenuation (FRC 6328 2026).
  */
 public final class EgoPoseBuffer {
+  private static final double DEFAULT_FULL_TILT_ATTENUATION_DEG = 25.0;
+
   private final int capacity;
   private final double[] timestamps;
   private final Pose3d[] poses;
@@ -30,7 +33,7 @@ public final class EgoPoseBuffer {
   }
 
   /** Adds a monotonic timestamped ego pose sample. */
-  public void addSample(Pose3d pose3d, double timestampSec) {
+  public synchronized void addSample(Pose3d pose3d, double timestampSec) {
     Objects.requireNonNull(pose3d, "pose3d must not be null");
     if (!Double.isFinite(timestampSec) || timestampSec < 0.0) {
       throw new IllegalArgumentException("timestampSec must be finite and >= 0");
@@ -54,7 +57,7 @@ public final class EgoPoseBuffer {
   }
 
   /** Returns the most recent ego pose, or empty if no samples have been recorded. */
-  public Optional<Pose3d> latestPose() {
+  public synchronized Optional<Pose3d> latestPose() {
     if (size == 0) {
       return Optional.empty();
     }
@@ -66,7 +69,7 @@ public final class EgoPoseBuffer {
    * Returns the latency-matched ego {@link Pose3d} at {@code queryTimestampSec}, interpolating
    * between surrounding samples or clamping to the nearest endpoint.
    */
-  public Optional<Pose3d> sampleAt(double queryTimestampSec) {
+  public synchronized Optional<Pose3d> sampleAt(double queryTimestampSec) {
     if (size == 0) {
       return Optional.empty();
     }
@@ -79,7 +82,6 @@ public final class EgoPoseBuffer {
       return Optional.of(poses[newestIdx]);
     }
 
-    // Walk backward from newest (vision latency is typically only 2–15 samples old)
     for (int offset = 1; offset < size; offset++) {
       int hi = (newestIdx - offset + 1 + capacity) % capacity;
       int lo = (newestIdx - offset + capacity) % capacity;
@@ -103,7 +105,7 @@ public final class EgoPoseBuffer {
   }
 
   /** Estimates planar ego velocity {@code [vx, vy]} (m/s) over the most recent samples. */
-  public double[] estimatePlanarVelocity() {
+  public synchronized double[] estimatePlanarVelocity() {
     if (size < 2) {
       return new double[] {0.0, 0.0};
     }
@@ -118,8 +120,56 @@ public final class EgoPoseBuffer {
     return new double[] {(pNew.getX() - pOld.getX()) / dt, (pNew.getY() - pOld.getY()) / dt};
   }
 
-  public void clear() {
+  /**
+   * Returns the peak absolute yaw angular velocity (rad/s) observed across consecutive samples
+   * overlapping {@code [startSec, endSec]} (inspired by FRC 254's {@code ±0.3 s} vision rate gate).
+   */
+  public synchronized double maxAbsYawRateInWindow(double startSec, double endSec) {
+    if (size < 2 || endSec < startSec) {
+      return 0.0;
+    }
+    int oldestIdx = (head - size + capacity) % capacity;
+    double maxRate = 0.0;
+    for (int i = 1; i < size; i++) {
+      int lo = (oldestIdx + i - 1) % capacity;
+      int hi = (oldestIdx + i) % capacity;
+      double tLo = timestamps[lo];
+      double tHi = timestamps[hi];
+      if (tHi < startSec || tLo > endSec) {
+        continue;
+      }
+      double dt = tHi - tLo;
+      if (dt < 1e-4) {
+        continue;
+      }
+      double dYaw = wrapRad(poses[hi].getRotation().getZ() - poses[lo].getRotation().getZ());
+      maxRate = Math.max(maxRate, Math.abs(dYaw) / dt);
+    }
+    return maxRate;
+  }
+
+  /**
+   * Computes tilt-compensated planar odometry attenuation {@code [0..1]} for bump/ramp traversal
+   * (matching FRC 6328's 2026 REBUILT formula: {@code 1 - clamp(tiltDeg / 25.0, 0, 1)} where {@code
+   * tiltDeg = deg(acos(cos(pitch) * cos(roll)))}).
+   */
+  public static double tiltOdometryScale(double pitchRad, double rollRad) {
+    double cosTilt = Math.max(-1.0, Math.min(1.0, Math.cos(pitchRad) * Math.cos(rollRad)));
+    double tiltDeg = Math.toDegrees(Math.acos(cosTilt));
+    double ratio = Math.max(0.0, Math.min(1.0, tiltDeg / DEFAULT_FULL_TILT_ATTENUATION_DEG));
+    return 1.0 - ratio;
+  }
+
+  public synchronized void clear() {
     head = 0;
     size = 0;
+  }
+
+  private static double wrapRad(double rad) {
+    double r = (rad + Math.PI) % (2.0 * Math.PI);
+    if (r < 0.0) {
+      r += 2.0 * Math.PI;
+    }
+    return r - Math.PI;
   }
 }

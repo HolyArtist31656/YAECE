@@ -189,17 +189,22 @@ public final class YaeceEngine {
 
   public void recordSelfScored(
       String siteId, String pieceId, MatchPeriod period, double elapsedMatchSec) {
-    ledger.recordSelfScored(siteId, pieceId, period, elapsedMatchSec);
+    ledger.recordSelfScored(siteId, pieceId, period, elapsedMatchSec, dynamicScoring);
   }
 
   /** Steps the world model, polls NT4 console if enabled, and returns the live recommendation. */
   public TacticalRecommendation updateAndEvaluate(
-      double timestampSec,
+      double fpgaTimestampSec,
       RobotInventoryState inventory,
       MatchPeriod period,
       double matchTimeRemainingSec) {
+    if (!Double.isFinite(fpgaTimestampSec) || fpgaTimestampSec < 0.0) {
+      throw new IllegalArgumentException("fpgaTimestampSec must be finite and >= 0");
+    }
+    double clampedRemaining =
+        Math.max(0.0, Math.min(season.matchDurationSeconds(), matchTimeRemainingSec));
     if (consoleBridge != null) {
-      double elapsed = Math.max(0.0, season.matchDurationSeconds() - matchTimeRemainingSec);
+      double elapsed = Math.max(0.0, season.matchDurationSeconds() - clampedRemaining);
       ConsoleControlState cs = consoleBridge.poll(elapsed);
       this.playMode = cs.playMode();
       this.defenseStrategyMode = cs.defenseStrategyMode();
@@ -209,7 +214,7 @@ public final class YaeceEngine {
     if (coprocessorBridge != null) {
       coprocessorBridge.pollInto(this);
     }
-    WorldSnapshot snap = world.step(timestampSec);
+    WorldSnapshot snap = world.step(fpgaTimestampSec);
     TacticalRecommendation rec =
         arbiter.evaluate(
             snap,
@@ -217,7 +222,7 @@ public final class YaeceEngine {
             inventory,
             ourAlliance,
             period,
-            matchTimeRemainingSec,
+            clampedRemaining,
             playMode,
             defenseStrategyMode,
             optimizationObjective,

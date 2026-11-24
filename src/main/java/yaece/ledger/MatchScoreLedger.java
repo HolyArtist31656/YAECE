@@ -9,6 +9,7 @@ import yaece.season.MatchPeriod;
 import yaece.season.ScoringObjectiveSpec;
 import yaece.season.ScoringSiteSpec;
 import yaece.season.SeasonConfig;
+import yaece.tactics.DynamicScoringState;
 
 /**
  * Flexible, timestamp-aware self + alliance + opposing-alliance scoring ledger and opponent score
@@ -80,10 +81,23 @@ public final class MatchScoreLedger {
    * @param siteId valid {@link ScoringSiteSpec#id()} in the loaded season config
    * @param pieceId valid game-piece ID accepted by that site
    * @param period {@link MatchPeriod#AUTO} or {@link MatchPeriod#TELEOP}
-   * @param timestampSec elapsed match time in seconds (&gt;= 0)
+   * @param elapsedMatchSec elapsed match time in seconds (&gt;= 0)
    */
   public void recordSelfScored(
-      String siteId, String pieceId, MatchPeriod period, double timestampSec) {
+      String siteId, String pieceId, MatchPeriod period, double elapsedMatchSec) {
+    recordSelfScored(siteId, pieceId, period, elapsedMatchSec, null);
+  }
+
+  /**
+   * Records a game piece scored by our own robot, applying any active {@link DynamicScoringState}
+   * or {@link yaece.season.ScoringIntervalSpec} multipliers and flat bonuses.
+   */
+  public void recordSelfScored(
+      String siteId,
+      String pieceId,
+      MatchPeriod period,
+      double elapsedMatchSec,
+      DynamicScoringState dynamicScoring) {
     ScoringSiteSpec site =
         season
             .findScoringSite(siteId)
@@ -92,9 +106,14 @@ public final class MatchScoreLedger {
       throw new IllegalArgumentException(
           "Site '" + siteId + "' does not accept piece '" + pieceId + "'");
     }
-    validateTimestamp(timestampSec);
-    double pts = site.pointsFor(period);
-    selfEvents.add(new SelfScoreEvent(siteId, pieceId, period, pts, timestampSec));
+    validateTimestamp(elapsedMatchSec);
+    double pts =
+        dynamicScoring != null
+            ? dynamicScoring
+                .evaluateSite(season, site, period, elapsedMatchSec)
+                .effectiveBasePoints()
+            : site.pointsFor(period);
+    selfEvents.add(new SelfScoreEvent(siteId, pieceId, period, pts, elapsedMatchSec));
   }
 
   /** Returns the exact count of pieces scored by our own robot at {@code siteId}. */

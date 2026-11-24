@@ -37,9 +37,7 @@ public final class LaneClearanceChecker {
       if (!obs.blocksChassis()) {
         continue;
       }
-      List<Translation2d> poly =
-          obs.verticesFor(
-              alliance, season.fieldLengthMeters(), season.fieldWidthMeters(), season.mirrorMode());
+      List<Translation2d> poly = season.resolvedObstaclePolygon(obs, alliance);
       if (FieldMirroring.polygonContainsPoint(poly, point)
           || distanceToPolygonEdges(point, poly) < egoBumperRadiusMeters) {
         return true;
@@ -56,9 +54,7 @@ public final class LaneClearanceChecker {
       if (zone.ruleType() == ZoneRuleType.NO_OPPONENT_CONTACT && !checkNoContact) {
         continue;
       }
-      List<Translation2d> poly =
-          zone.verticesFor(
-              alliance, season.fieldLengthMeters(), season.fieldWidthMeters(), season.mirrorMode());
+      List<Translation2d> poly = season.resolvedZonePolygon(zone, alliance);
       double pad = egoBumperRadiusMeters + zone.safetyBufferMeters();
       if (FieldMirroring.polygonContainsPoint(poly, point)
           || distanceToPolygonEdges(point, poly) < pad) {

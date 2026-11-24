@@ -186,13 +186,7 @@ public final class DefenseInterceptor {
     Translation2d interceptPt = null;
 
     for (DefenseZoneSpec zone : defCfg.defenseZones()) {
-      List<Translation2d> poly =
-          FieldMirroring.mirrorPolygon(
-              zone.blueVertices(),
-              ourAlliance,
-              season.fieldLengthMeters(),
-              season.fieldWidthMeters(),
-              season.mirrorMode());
+      List<Translation2d> poly = season.resolvedDefenseZonePolygon(zone, ourAlliance);
       Pose2d anchor =
           zone.anchorPoseFor(
               ourAlliance,

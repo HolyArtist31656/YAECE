@@ -39,9 +39,12 @@ public final class EncounterArbiter {
   private static final double PRE_OPEN_STAGING_WINDOW_SEC = 3.5;
   private static final DynamicScoringState DEFAULT_DYNAMIC = new DynamicScoringState();
 
+  private static final double ALLY_DECONFLICT_MARGIN_SEC = 0.25;
+
   private final SeasonConfig season;
   private final RobotKinematicsSpec kinematics;
   private final DefenseInterceptor defenseInterceptor;
+  private final FieldPathfinder pathfinder;
 
   private EncounterIntent lastIntent = EncounterIntent.IDLE;
   private String lastTargetId = "";
@@ -51,6 +54,7 @@ public final class EncounterArbiter {
     this.season = Objects.requireNonNull(season, "season must not be null");
     this.kinematics = Objects.requireNonNull(kinematics, "kinematics must not be null");
     this.defenseInterceptor = new DefenseInterceptor(season, kinematics);
+    this.pathfinder = new FieldPathfinder(season, kinematics.bumperRadiusMeters());
   }
 
   /** Evaluates the optimal tactical recommendation for the current tick. */
@@ -124,7 +128,16 @@ public final class EncounterArbiter {
           }
           Pose3d approachPose = season.resolveSiteApproachPose(site, ourAlliance);
           Translation2d approachXy = approachPose.getTranslation().toTranslation2d();
-          double tDrive = kinematics.estimateTravelTimeSec(egoXy.getDistance(approachXy));
+          FieldPathfinder.PathResult scorePath =
+              pathfinder.findPath(egoXy, approachXy, ourAlliance, period, matchTimeRemainingSec);
+          double tDrive = kinematics.estimateTravelTimeSec(scorePath.totalDistanceMeters());
+          Pose3d scoreWaypointPose =
+              scorePath.detourRequired()
+                  ? new Pose3d(
+                      new Translation3d(
+                          scorePath.nextWaypoint().getX(), scorePath.nextWaypoint().getY(), 0.0),
+                      approachPose.getRotation())
+                  : approachPose;
           double lanePenalty =
               LaneClearanceChecker.evaluateLaneCongestionPenaltySec(
                   egoXy, approachXy, tDrive, world, kinematics.bumperRadiusMeters());
@@ -133,8 +146,8 @@ public final class EncounterArbiter {
               dyn.evaluateSite(season, site, period, elapsedMatchSec);
           double arrivalEst = tDrive + kinematics.nominalScoreCycleSec();
 
-          // Inactive site OR closing window before we can arrive: skip scoring, optionally
-          // pre-stage if opening soon
+          // Inactive site OR closing window before we can arrive: skip scoring, pre-stage if
+          // opening soon or hopper full
           if (!eff.active() || eff.activeWindowRemainingSec() < arrivalEst) {
             boolean openingSoon =
                 !eff.active() && eff.inactiveTimeUntilOpenSec() <= PRE_OPEN_STAGING_WINDOW_SEC;
@@ -215,7 +228,7 @@ public final class EncounterArbiter {
             TacticalRecommendation cand =
                 new TacticalRecommendation(
                     EncounterIntent.SCORE,
-                    approachPose,
+                    scoreWaypointPose,
                     site.id(),
                     heldPieceId,
                     pps,
@@ -251,7 +264,9 @@ public final class EncounterArbiter {
         continue;
       }
 
-      double tEgoToPiece = kinematics.estimateTravelTimeSec(egoXy.getDistance(pieceXy));
+      FieldPathfinder.PathResult gatherPath =
+          pathfinder.findPath(egoXy, pieceXy, ourAlliance, period, matchTimeRemainingSec);
+      double tEgoToPiece = kinematics.estimateTravelTimeSec(gatherPath.totalDistanceMeters());
       if (isLostToArrivalRace(pieceXy, tEgoToPiece, world)) {
         continue;
       }
@@ -309,8 +324,12 @@ public final class EncounterArbiter {
           spec.requireOrientationForIntake()
               ? gp.pose3d().getRotation().getZ()
               : Math.atan2(pieceXy.getY() - egoXy.getY(), pieceXy.getX() - egoXy.getX());
-      Pose3d targetPose =
-          new Pose3d(gp.pose3d().getTranslation(), new Rotation3d(0.0, 0.0, intakeYaw));
+      Translation3d gatherTargetTranslation =
+          gatherPath.detourRequired()
+              ? new Translation3d(
+                  gatherPath.nextWaypoint().getX(), gatherPath.nextWaypoint().getY(), 0.0)
+              : gp.pose3d().getTranslation();
+      Pose3d targetPose = new Pose3d(gatherTargetTranslation, new Rotation3d(0.0, 0.0, intakeYaw));
 
       TacticalRecommendation cand =
           new TacticalRecommendation(
@@ -378,10 +397,24 @@ public final class EncounterArbiter {
 
   private boolean isLostToArrivalRace(Translation2d pieceXy, double tEgoSec, WorldSnapshot world) {
     for (TrackedRobot bot : world.robots()) {
-      double botDist = bot.pose3d().getTranslation().toTranslation2d().getDistance(pieceXy);
-      double botSpeed = Math.max(2.0, bot.speedMps());
-      double tOther = botDist / botSpeed;
-      if (tOther + OPPONENT_RACE_ABORT_MARGIN_SEC < tEgoSec) {
+      Translation2d botXy = bot.pose3d().getTranslation().toTranslation2d();
+      double botDist = botXy.getDistance(pieceXy);
+      if (botDist < 0.25) {
+        return true;
+      }
+      double ux = (pieceXy.getX() - botXy.getX()) / botDist;
+      double uy = (pieceXy.getY() - botXy.getY()) / botDist;
+      double closingSpeed = bot.vxMps() * ux + bot.vyMps() * uy;
+
+      double effectiveSpeed = closingSpeed > 0.5 ? Math.max(closingSpeed, 2.0) : 2.0;
+      double turnaroundPenalty = closingSpeed < -0.5 ? 0.65 : 0.0;
+      double tOther = (botDist / effectiveSpeed) + turnaroundPenalty;
+
+      double margin =
+          bot.affiliation() == yaece.perception.RobotAffiliation.ALLY
+              ? ALLY_DECONFLICT_MARGIN_SEC
+              : OPPONENT_RACE_ABORT_MARGIN_SEC;
+      if (tOther + margin < tEgoSec) {
         return true;
       }
     }
