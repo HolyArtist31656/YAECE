@@ -232,6 +232,9 @@ public final class FieldPathfinder {
       trace = cameFrom[trace];
     }
     Collections.reverse(reversed);
+    while (reversed.size() > 1 && start.getDistance(reversed.get(0)) < 0.18) {
+      reversed.remove(0);
+    }
     Translation2d firstWp = reversed.isEmpty() ? goal : reversed.get(0);
     return new PathResult(gScore[goalIdx], firstWp, List.copyOf(reversed), reversed.size() > 1);
   }
@@ -271,26 +274,25 @@ public final class FieldPathfinder {
     if (poly.isEmpty()) {
       return poly;
     }
-    double cx = 0.0;
-    double cy = 0.0;
+    double minX = Double.POSITIVE_INFINITY;
+    double maxX = Double.NEGATIVE_INFINITY;
+    double minY = Double.POSITIVE_INFINITY;
+    double maxY = Double.NEGATIVE_INFINITY;
     for (Translation2d p : poly) {
-      cx += p.getX();
-      cy += p.getY();
+      minX = Math.min(minX, p.getX());
+      maxX = Math.max(maxX, p.getX());
+      minY = Math.min(minY, p.getY());
+      maxY = Math.max(maxY, p.getY());
     }
-    cx /= poly.size();
-    cy /= poly.size();
-
-    List<Translation2d> inflated = new ArrayList<>(poly.size());
-    for (Translation2d p : poly) {
-      double dx = p.getX() - cx;
-      double dy = p.getY() - cy;
-      double len = Math.hypot(dx, dy);
-      double scale = len > 1e-6 ? (len + padMeters * 1.4142135623730951) / len : 1.0;
-      double nx = Math.max(0.1, Math.min(season.fieldLengthMeters() - 0.1, cx + dx * scale));
-      double ny = Math.max(0.1, Math.min(season.fieldWidthMeters() - 0.1, cy + dy * scale));
-      inflated.add(new Translation2d(nx, ny));
-    }
-    return inflated;
+    double x0 = Math.max(0.05, minX - padMeters);
+    double x1 = Math.min(season.fieldLengthMeters() - 0.05, maxX + padMeters);
+    double y0 = Math.max(0.05, minY - padMeters);
+    double y1 = Math.min(season.fieldWidthMeters() - 0.05, maxY + padMeters);
+    return List.of(
+        new Translation2d(x0, y0),
+        new Translation2d(x1, y0),
+        new Translation2d(x1, y1),
+        new Translation2d(x0, y1));
   }
 
   private boolean isInsideField(Translation2d p) {

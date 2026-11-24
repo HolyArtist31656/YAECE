@@ -10,7 +10,7 @@
     {
       "id": "fuel",
       "visionClassId": 0,
-      "dimensionsMeters": [0.15, 0.15, 0.15],
+      "dimensionsMeters": [0.1501, 0.1501, 0.1501],
       "restHeightMeters": 0.075,
       "symmetry": "SPHERICAL",
       "maxHeldSimultaneously": 12,
@@ -22,8 +22,8 @@
   "scoringSites": [
     {
       "id": "alliance_hub_close",
-      "pose3d": [4.59, 4.035, 1.83, 0.0, 0.0, 0.0],
-      "approachOffsetMeters": [-1.85, 0.0, -1.83, 0.0, 0.0, 0.0],
+      "pose3d": [4.625, 4.035, 1.829, 0.0, 0.0, 0.0],
+      "approachOffsetMeters": [-1.85, 0.0, -1.829, 0.0, 0.0, 0.0],
       "acceptedPieces": ["fuel"],
       "autoPoints": 1.0,
       "teleopPoints": 1.0,
@@ -34,8 +34,8 @@
     },
     {
       "id": "alliance_hub_far_north",
-      "pose3d": [4.59, 4.035, 1.83, 0.0, 0.0, 0.0],
-      "approachOffsetMeters": [-1.60, 1.80, -1.83, 0.0, 0.0, -0.7853981633974483],
+      "pose3d": [4.625, 4.035, 1.829, 0.0, 0.0, 0.0],
+      "approachOffsetMeters": [-1.60, 1.80, -1.829, 0.0, 0.0, -0.7853981633974483],
       "acceptedPieces": ["fuel"],
       "autoPoints": 1.0,
       "teleopPoints": 1.0,
@@ -46,8 +46,8 @@
     },
     {
       "id": "alliance_hub_far_south",
-      "pose3d": [4.59, 4.035, 1.83, 0.0, 0.0, 0.0],
-      "approachOffsetMeters": [-1.60, -1.80, -1.83, 0.0, 0.0, 0.7853981633974483],
+      "pose3d": [4.625, 4.035, 1.829, 0.0, 0.0, 0.0],
+      "approachOffsetMeters": [-1.60, -1.80, -1.829, 0.0, 0.0, 0.7853981633974483],
       "acceptedPieces": ["fuel"],
       "autoPoints": 1.0,
       "teleopPoints": 1.0,
@@ -62,23 +62,23 @@
       "id": "blue_hub_base",
       "polygon2d": [
         [4.03, 3.44],
-        [5.15, 3.44],
-        [5.15, 4.63],
+        [5.22, 3.44],
+        [5.22, 4.63],
         [4.03, 4.63]
       ],
-      "heightMeters": 1.83,
+      "heightMeters": 1.829,
       "blocksVision": true,
       "blocksChassis": true
     },
     {
       "id": "red_hub_base",
       "polygon2d": [
-        [11.39, 3.44],
+        [11.32, 3.44],
         [12.51, 3.44],
         [12.51, 4.63],
-        [11.39, 4.63]
+        [11.32, 4.63]
       ],
-      "heightMeters": 1.83,
+      "heightMeters": 1.829,
       "blocksVision": true,
       "blocksChassis": true
     },
@@ -86,11 +86,71 @@
       "id": "blue_tower_structure",
       "polygon2d": [
         [0.0, 3.41],
-        [1.15, 3.41],
-        [1.15, 4.66],
+        [1.14, 3.41],
+        [1.14, 4.66],
         [0.0, 4.66]
       ],
       "heightMeters": 1.988,
+      "blocksVision": true,
+      "blocksChassis": true
+    },
+    {
+      "id": "red_tower_structure",
+      "polygon2d": [
+        [15.40, 3.41],
+        [16.54, 3.41],
+        [16.54, 4.66],
+        [15.40, 4.66]
+      ],
+      "heightMeters": 1.988,
+      "blocksVision": true,
+      "blocksChassis": true
+    },
+    {
+      "id": "blue_trench_pillar_north",
+      "polygon2d": [
+        [4.03, 6.49],
+        [5.22, 6.49],
+        [5.22, 6.79],
+        [4.03, 6.79]
+      ],
+      "heightMeters": 1.022,
+      "blocksVision": true,
+      "blocksChassis": true
+    },
+    {
+      "id": "blue_trench_pillar_south",
+      "polygon2d": [
+        [4.03, 1.28],
+        [5.22, 1.28],
+        [5.22, 1.58],
+        [4.03, 1.58]
+      ],
+      "heightMeters": 1.022,
+      "blocksVision": true,
+      "blocksChassis": true
+    },
+    {
+      "id": "red_trench_pillar_north",
+      "polygon2d": [
+        [11.32, 6.49],
+        [12.51, 6.49],
+        [12.51, 6.79],
+        [11.32, 6.79]
+      ],
+      "heightMeters": 1.022,
+      "blocksVision": true,
+      "blocksChassis": true
+    },
+    {
+      "id": "red_trench_pillar_south",
+      "polygon2d": [
+        [11.32, 1.28],
+        [12.51, 1.28],
+        [12.51, 1.58],
+        [11.32, 1.58]
+      ],
+      "heightMeters": 1.022,
       "blocksVision": true,
       "blocksChassis": true
     }
@@ -134,10 +194,10 @@
       "id": "blue_bump_north",
       "ruleType": "SOFT_AVOIDANCE",
       "polygon2d": [
-        [4.03, 4.63],
-        [5.15, 4.63],
-        [5.15, 6.48],
-        [4.03, 6.48]
+        [4.06, 4.63],
+        [5.19, 4.63],
+        [5.19, 6.49],
+        [4.06, 6.49]
       ],
       "activeInAuto": true,
       "activeInTeleop": true,
@@ -148,10 +208,94 @@
       "id": "blue_bump_south",
       "ruleType": "SOFT_AVOIDANCE",
       "polygon2d": [
-        [4.03, 1.59],
-        [5.15, 1.59],
-        [5.15, 3.44],
-        [4.03, 3.44]
+        [4.06, 1.58],
+        [5.19, 1.58],
+        [5.19, 3.44],
+        [4.06, 3.44]
+      ],
+      "activeInAuto": true,
+      "activeInTeleop": true,
+      "activeWhenMatchTimeRemainingSecLessOrEqual": -1.0,
+      "safetyBufferMeters": 0.0
+    },
+    {
+      "id": "red_bump_north",
+      "ruleType": "SOFT_AVOIDANCE",
+      "polygon2d": [
+        [11.35, 4.63],
+        [12.48, 4.63],
+        [12.48, 6.49],
+        [11.35, 6.49]
+      ],
+      "activeInAuto": true,
+      "activeInTeleop": true,
+      "activeWhenMatchTimeRemainingSecLessOrEqual": -1.0,
+      "safetyBufferMeters": 0.0
+    },
+    {
+      "id": "red_bump_south",
+      "ruleType": "SOFT_AVOIDANCE",
+      "polygon2d": [
+        [11.35, 1.58],
+        [12.48, 1.58],
+        [12.48, 3.44],
+        [11.35, 3.44]
+      ],
+      "activeInAuto": true,
+      "activeInTeleop": true,
+      "activeWhenMatchTimeRemainingSecLessOrEqual": -1.0,
+      "safetyBufferMeters": 0.0
+    },
+    {
+      "id": "blue_trench_north",
+      "ruleType": "SOFT_AVOIDANCE",
+      "polygon2d": [
+        [4.03, 6.79],
+        [5.22, 6.79],
+        [5.22, 8.07],
+        [4.03, 8.07]
+      ],
+      "activeInAuto": true,
+      "activeInTeleop": true,
+      "activeWhenMatchTimeRemainingSecLessOrEqual": -1.0,
+      "safetyBufferMeters": 0.0
+    },
+    {
+      "id": "blue_trench_south",
+      "ruleType": "SOFT_AVOIDANCE",
+      "polygon2d": [
+        [4.03, 0.0],
+        [5.22, 0.0],
+        [5.22, 1.28],
+        [4.03, 1.28]
+      ],
+      "activeInAuto": true,
+      "activeInTeleop": true,
+      "activeWhenMatchTimeRemainingSecLessOrEqual": -1.0,
+      "safetyBufferMeters": 0.0
+    },
+    {
+      "id": "red_trench_north",
+      "ruleType": "SOFT_AVOIDANCE",
+      "polygon2d": [
+        [11.32, 6.79],
+        [12.51, 6.79],
+        [12.51, 8.07],
+        [11.32, 8.07]
+      ],
+      "activeInAuto": true,
+      "activeInTeleop": true,
+      "activeWhenMatchTimeRemainingSecLessOrEqual": -1.0,
+      "safetyBufferMeters": 0.0
+    },
+    {
+      "id": "red_trench_south",
+      "ruleType": "SOFT_AVOIDANCE",
+      "polygon2d": [
+        [11.32, 0.0],
+        [12.51, 0.0],
+        [12.51, 1.28],
+        [11.32, 1.28]
       ],
       "activeInAuto": true,
       "activeInTeleop": true,
@@ -188,8 +332,8 @@
         "id": "neutral_to_red_north_choke",
         "polygon2d": [
           [9.20, 4.63],
-          [11.35, 4.63],
-          [11.35, 7.80],
+          [11.32, 4.63],
+          [11.32, 7.80],
           [9.20, 7.80]
         ],
         "anchorPose2d": [10.30, 5.80, 1.5707963267948966],
@@ -199,8 +343,8 @@
         "id": "neutral_to_red_south_choke",
         "polygon2d": [
           [9.20, 0.27],
-          [11.35, 0.27],
-          [11.35, 3.44],
+          [11.32, 0.27],
+          [11.32, 3.44],
           [9.20, 3.44]
         ],
         "anchorPose2d": [10.30, 2.27, -1.5707963267948966],
