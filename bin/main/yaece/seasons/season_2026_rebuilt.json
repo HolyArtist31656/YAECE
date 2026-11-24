@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "seasonName": "FRC_2026_REBUILT",
+  "fieldLengthMeters": 16.54,
+  "fieldWidthMeters": 8.07,
+  "mirrorMode": "ROTATIONAL_180",
+  "maxTotalHeldGamePieces": 12,
+  "matchDurationSeconds": 160.0,
+  "gamePieces": [
+    {
+      "id": "fuel",
+      "visionClassId": 0,
+      "dimensionsMeters": [0.15, 0.15, 0.15],
+      "restHeightMeters": 0.075,
+      "symmetry": "SPHERICAL",
+      "maxHeldSimultaneously": 12,
+      "requireOrientationForIntake": false,
+      "maxIntakeYawErrorDeg": 180.0,
+      "maxIntakeTiltErrorDeg": 180.0
+    }
+  ],
+  "scoringSites": [
+    {
+      "id": "alliance_hub_close",
+      "pose3d": [4.59, 4.035, 1.83, 0.0, 0.0, 0.0],
+      "approachOffsetMeters": [-1.85, 0.0, -1.83, 0.0, 0.0, 0.0],
+      "acceptedPieces": ["fuel"],
+      "autoPoints": 1.0,
+      "teleopPoints": 1.0,
+      "siteCapacity": -1,
+      "stagingHoldPose2d": [2.40, 4.035, 0.0],
+      "tags": ["hub_fuel", "active_shift_gated"],
+      "dynamicAvailabilityKey": "hub_active"
+    },
+    {
+      "id": "alliance_hub_far_north",
+      "pose3d": [4.59, 4.035, 1.83, 0.0, 0.0, 0.0],
+      "approachOffsetMeters": [-1.60, 1.80, -1.83, 0.0, 0.0, -0.7853981633974483],
+      "acceptedPieces": ["fuel"],
+      "autoPoints": 1.0,
+      "teleopPoints": 1.0,
+      "siteCapacity": -1,
+      "stagingHoldPose2d": [2.75, 6.10, -0.7853981633974483],
+      "tags": ["hub_fuel", "active_shift_gated"],
+      "dynamicAvailabilityKey": "hub_active"
+    },
+    {
+      "id": "alliance_hub_far_south",
+      "pose3d": [4.59, 4.035, 1.83, 0.0, 0.0, 0.0],
+      "approachOffsetMeters": [-1.60, -1.80, -1.83, 0.0, 0.0, 0.7853981633974483],
+      "acceptedPieces": ["fuel"],
+      "autoPoints": 1.0,
+      "teleopPoints": 1.0,
+      "siteCapacity": -1,
+      "stagingHoldPose2d": [2.75, 1.97, 0.7853981633974483],
+      "tags": ["hub_fuel", "active_shift_gated"],
+      "dynamicAvailabilityKey": "hub_active"
+    }
+  ],
+  "staticObstacles": [
+    {
+      "id": "blue_hub_base",
+      "polygon2d": [
+        [4.03, 3.44],
+        [5.15, 3.44],
+        [5.15, 4.63],
+        [4.03, 4.63]
+      ],
+      "heightMeters": 1.83,
+      "blocksVision": true,
+      "blocksChassis": true
+    },
+    {
+      "id": "red_hub_base",
+      "polygon2d": [
+        [11.39, 3.44],
+        [12.51, 3.44],
+        [12.51, 4.63],
+        [11.39, 4.63]
+      ],
+      "heightMeters": 1.83,
+      "blocksVision": true,
+      "blocksChassis": true
+    },
+    {
+      "id": "blue_tower_structure",
+      "polygon2d": [
+        [0.0, 3.41],
+        [1.15, 3.41],
+        [1.15, 4.66],
+        [0.0, 4.66]
+      ],
+      "heightMeters": 1.988,
+      "blocksVision": true,
+      "blocksChassis": true
+    }
+  ],
+  "pinRules": {
+    "maxPinSeconds": 3.0,
+    "backoffTriggerSeconds": 2.2,
+    "separationDistanceMeters": 1.83,
+    "cooldownHoldSeconds": 3.2
+  },
+  "restrictedZones": [
+    {
+      "id": "opponent_tower_endgame_g420",
+      "ruleType": "NO_OPPONENT_CONTACT",
+      "polygon2d": [
+        [14.90, 2.95],
+        [16.54, 2.95],
+        [16.54, 5.12],
+        [14.90, 5.12]
+      ],
+      "activeInAuto": false,
+      "activeInTeleop": true,
+      "activeWhenMatchTimeRemainingSecLessOrEqual": 30.0,
+      "safetyBufferMeters": 0.45
+    },
+    {
+      "id": "auto_opponent_side_g403",
+      "ruleType": "HARD_NO_ENTRY",
+      "polygon2d": [
+        [8.27, 0.0],
+        [16.54, 0.0],
+        [16.54, 8.07],
+        [8.27, 8.07]
+      ],
+      "activeInAuto": true,
+      "activeInTeleop": false,
+      "activeWhenMatchTimeRemainingSecLessOrEqual": -1.0,
+      "safetyBufferMeters": 0.25
+    },
+    {
+      "id": "blue_bump_north",
+      "ruleType": "SOFT_AVOIDANCE",
+      "polygon2d": [
+        [4.03, 4.63],
+        [5.15, 4.63],
+        [5.15, 6.48],
+        [4.03, 6.48]
+      ],
+      "activeInAuto": true,
+      "activeInTeleop": true,
+      "activeWhenMatchTimeRemainingSecLessOrEqual": -1.0,
+      "safetyBufferMeters": 0.0
+    },
+    {
+      "id": "blue_bump_south",
+      "ruleType": "SOFT_AVOIDANCE",
+      "polygon2d": [
+        [4.03, 1.59],
+        [5.15, 1.59],
+        [5.15, 3.44],
+        [4.03, 3.44]
+      ],
+      "activeInAuto": true,
+      "activeInTeleop": true,
+      "activeWhenMatchTimeRemainingSecLessOrEqual": -1.0,
+      "safetyBufferMeters": 0.0
+    }
+  ],
+  "scoringObjectives": [
+    {
+      "id": "energized_rp",
+      "rewardType": "RANKING_POINT",
+      "rewardValue": 1.0,
+      "aggregationMode": "TOTAL_COUNT",
+      "targetCount": 100,
+      "matchingSiteTags": ["hub_fuel"],
+      "matchingPieceIds": ["fuel"]
+    },
+    {
+      "id": "supercharged_rp",
+      "rewardType": "RANKING_POINT",
+      "rewardValue": 1.0,
+      "aggregationMode": "TOTAL_COUNT",
+      "targetCount": 360,
+      "matchingSiteTags": ["hub_fuel"],
+      "matchingPieceIds": ["fuel"]
+    }
+  ],
+  "defenseDefaults": {
+    "defaultPreferredMode": "HIGHEST_THREAT",
+    "zoneDefenseLeadMarginPoints": 15.0,
+    "highestThreatTrailMarginPoints": 8.0,
+    "defenseZones": [
+      {
+        "id": "neutral_to_red_north_choke",
+        "polygon2d": [
+          [9.20, 4.63],
+          [11.35, 4.63],
+          [11.35, 7.80],
+          [9.20, 7.80]
+        ],
+        "anchorPose2d": [10.30, 5.80, 1.5707963267948966],
+        "priorityWeight": 1.0
+      },
+      {
+        "id": "neutral_to_red_south_choke",
+        "polygon2d": [
+          [9.20, 0.27],
+          [11.35, 0.27],
+          [11.35, 3.44],
+          [9.20, 3.44]
+        ],
+        "anchorPose2d": [10.30, 2.27, -1.5707963267948966],
+        "priorityWeight": 1.0
+      }
+    ]
+  }
+}

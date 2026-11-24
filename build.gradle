@@ -1,0 +1,164 @@
+plugins {
+  id 'java-library'
+  id 'maven-publish'
+  id 'com.diffplug.spotless' version '8.0.0'
+}
+
+group = property('yaeceGroup')
+version = property('yaeceVersion')
+
+def wpilibVersion = property('wpilibVersion')
+def wpilibYear = property('wpilibYear')
+def githubOwner = property('githubOwner')
+def githubRepo = property('githubRepo')
+def artifactIdName = property('yaeceArtifactId')
+def pagesBaseUrl = "https://${githubOwner.toLowerCase()}.github.io/${githubRepo}"
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(25)
+  }
+  withJavadocJar()
+  withSourcesJar()
+}
+
+repositories {
+  mavenCentral()
+  maven {
+    name = 'WPILibAlpha'
+    url = 'https://frcmaven.wpi.edu/artifactory/development'
+  }
+  maven {
+    name = 'WPILibRelease'
+    url = 'https://frcmaven.wpi.edu/artifactory/release'
+  }
+}
+
+dependencies {
+  // Zero third-party runtime JARs: compile strictly against WPILib 2027_alpha7.
+  compileOnly "org.wpilib.wpimath:wpimath-java:${wpilibVersion}"
+  compileOnly "org.wpilib.wpiunits:wpiunits-java:${wpilibVersion}"
+  compileOnly "org.wpilib.wpiutil:wpiutil-java:${wpilibVersion}"
+  compileOnly "org.wpilib.wpilibj:wpilibj-java:${wpilibVersion}"
+  compileOnly "org.wpilib.ntcore:ntcore-java:${wpilibVersion}"
+  compileOnly "org.wpilib:commandsv3-java:${wpilibVersion}"
+
+  // JUnit 5 test suite + WPILib on test classpath
+  testImplementation platform('org.junit:junit-bom:5.11.4')
+  testImplementation 'org.junit.jupiter:junit-jupiter'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+  testRuntimeOnly 'us.hebi.quickbuf:quickbuf-runtime:1.3.3'
+  testRuntimeOnly 'org.ejml:ejml-simple:0.43.1'
+  testImplementation "org.wpilib.wpimath:wpimath-java:${wpilibVersion}"
+  testImplementation "org.wpilib.wpiunits:wpiunits-java:${wpilibVersion}"
+  testImplementation "org.wpilib.wpiutil:wpiutil-java:${wpilibVersion}"
+  testImplementation "org.wpilib.wpilibj:wpilibj-java:${wpilibVersion}"
+  testImplementation "org.wpilib.ntcore:ntcore-java:${wpilibVersion}"
+  testImplementation "org.wpilib:commandsv3-java:${wpilibVersion}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+  options.encoding = 'UTF-8'
+  options.release = 25
+  options.compilerArgs += ['-Xlint:all', '-Xlint:-serial']
+}
+
+tasks.named('test') {
+  useJUnitPlatform()
+  maxHeapSize = '256m'
+  jvmArgs '--add-opens=java.base/jdk.internal.vm=ALL-UNNAMED'
+  testLogging {
+    events 'passed', 'skipped', 'failed'
+    exceptionFormat = 'full'
+  }
+}
+
+tasks.named('javadoc') {
+  options.encoding = 'UTF-8'
+  options.addBooleanOption('html5', true)
+  options.addStringOption('Xdoclint:none', '-quiet')
+  title = "YAECE ${version} API"
+}
+
+spotless {
+  java {
+    target 'src/**/*.java'
+    googleJavaFormat('1.28.0')
+    removeUnusedImports()
+    trimTrailingWhitespace()
+    endWithNewline()
+  }
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      artifactId = artifactIdName
+      from components.java
+      pom {
+        name = 'Yet Another Encounter Control Engine (YAECE)'
+        description = 'Game-agnostic, sensor-agnostic FRC 3D field world-model, defensive interception & pin guard, live alliance/opponent score ledger, and dual-mode tactical arbiter for WPILib 2027 Commands v3.'
+        url = "https://github.com/${githubOwner}/${githubRepo}"
+        licenses {
+          license {
+            name = 'MIT License'
+            url = 'https://opensource.org/licenses/MIT'
+          }
+        }
+      }
+    }
+  }
+  repositories {
+    maven {
+      name = 'Pages'
+      url = layout.buildDirectory.dir('pages/maven/releases')
+    }
+  }
+}
+
+tasks.register('generateVendordepJson') {
+  group = 'publishing'
+  description = 'Generates vendordeps/yaece_commands3.json pinned to the current project version.'
+  def outputFile = layout.projectDirectory.file('vendordeps/yaece_commands3.json')
+  outputs.file(outputFile)
+  doLast {
+    def jsonText = """{
+  "fileName": "yaece_commands3.json",
+  "name": "YAECE (Yet Another Encounter Control Engine - Commands v3)",
+  "version": "${version}",
+  "frcYear": "${wpilibYear}",
+  "wpilibYear": "${wpilibYear}",
+  "uuid": "7d9c4b2e-5f81-4a3c-9e62-218100002027",
+  "mavenUrls": [
+    "${pagesBaseUrl}/maven/releases/"
+  ],
+  "jsonUrl": "${pagesBaseUrl}/vendordeps/yaece_commands3.json",
+  "javaDependencies": [
+    {
+      "groupId": "${group}",
+      "artifactId": "${artifactIdName}",
+      "version": "${version}"
+    }
+  ],
+  "jniDependencies": [],
+  "cppDependencies": []
+}
+"""
+    outputFile.asFile.parentFile.mkdirs()
+    outputFile.asFile.setText(jsonText, 'UTF-8')
+  }
+}
+
+tasks.register('stagePagesSite', Copy) {
+  group = 'publishing'
+  description = 'Stages Maven releases, Javadoc, and vendordep JSON into build/pages for GitHub Pages deployment.'
+  dependsOn 'publishAllPublicationsToPagesRepository', 'javadoc', 'generateVendordepJson'
+  into layout.buildDirectory.dir('pages')
+  from(layout.buildDirectory.dir('docs/javadoc')) {
+    into 'javadoc'
+  }
+  from(layout.projectDirectory.dir('vendordeps')) {
+    include 'yaece_commands3.json'
+    into 'vendordeps'
+  }
+}

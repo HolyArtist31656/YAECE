@@ -1,0 +1,21 @@
+{
+  "fileName": "yaece_commands3.json",
+  "name": "YAECE (Yet Another Encounter Control Engine - Commands v3)",
+  "version": "2027.1.0-alpha1",
+  "frcYear": "2027_alpha7",
+  "wpilibYear": "2027_alpha7",
+  "uuid": "7d9c4b2e-5f81-4a3c-9e62-218100002027",
+  "mavenUrls": [
+    "https://holyartist31656.github.io/YAECE/maven/releases/"
+  ],
+  "jsonUrl": "https://holyartist31656.github.io/YAECE/vendordeps/yaece_commands3.json",
+  "javaDependencies": [
+    {
+      "groupId": "publishing",
+      "artifactId": "yaece-commands3",
+      "version": "2027.1.0-alpha1"
+    }
+  ],
+  "jniDependencies": [],
+  "cppDependencies": []
+}
