@@ -14,6 +14,7 @@ import yaece.ledger.OptimizationObjective;
 import yaece.ledger.ScoreProjection;
 import yaece.perception.GamePieceObservation6DoF;
 import yaece.perception.RobotObservation;
+import yaece.scouting.ScoutingPriorRegistry;
 import yaece.season.AllianceSide;
 import yaece.season.DefenseStrategyMode;
 import yaece.season.MatchPeriod;
@@ -35,6 +36,7 @@ public final class YaeceEngine {
   private final MatchScoreLedger ledger;
   private final EncounterArbiter arbiter;
   private final DynamicScoringState dynamicScoring = new DynamicScoringState();
+  private final ScoutingPriorRegistry scoutingPriors;
 
   private AllianceSide ourAlliance;
   private PlayMode playMode = PlayMode.OFFENSE;
@@ -47,12 +49,16 @@ public final class YaeceEngine {
       TacticalRecommendation.idle(new Pose3d(), "Uninitialized");
 
   private YaeceEngine(
-      SeasonConfig season, AllianceSide ourAlliance, RobotKinematicsSpec kinematics) {
+      SeasonConfig season,
+      AllianceSide ourAlliance,
+      RobotKinematicsSpec kinematics,
+      ScoutingPriorRegistry scoutingPriors) {
     this.season = Objects.requireNonNull(season, "season must not be null");
     this.ourAlliance = Objects.requireNonNull(ourAlliance, "ourAlliance must not be null");
+    this.scoutingPriors = Objects.requireNonNull(scoutingPriors, "scoutingPriors must not be null");
     this.world = new FieldWorldModel(season, kinematics.bumperRadiusMeters());
     this.ledger = new MatchScoreLedger(season);
-    this.arbiter = new EncounterArbiter(season, kinematics);
+    this.arbiter = new EncounterArbiter(season, kinematics, this.scoutingPriors);
   }
 
   /** Creates a builder with sensible FRC swerve defaults. */
@@ -64,6 +70,7 @@ public final class YaeceEngine {
     private final SeasonConfig season;
     private AllianceSide alliance = AllianceSide.BLUE;
     private RobotKinematicsSpec kinematics = RobotKinematicsSpec.FRC_SWERVE_DEFAULT;
+    private ScoutingPriorRegistry scoutingPriors = new ScoutingPriorRegistry();
 
     private Builder(SeasonConfig season) {
       this.season = Objects.requireNonNull(season, "season must not be null");
@@ -79,8 +86,14 @@ public final class YaeceEngine {
       return this;
     }
 
+    public Builder withScoutingPriors(ScoutingPriorRegistry scoutingPriors) {
+      this.scoutingPriors =
+          Objects.requireNonNull(scoutingPriors, "scoutingPriors must not be null");
+      return this;
+    }
+
     public YaeceEngine build() {
-      return new YaeceEngine(season, alliance, kinematics);
+      return new YaeceEngine(season, alliance, kinematics, scoutingPriors);
     }
   }
 
@@ -246,6 +259,15 @@ public final class YaeceEngine {
     return ledger;
   }
 
+  public ScoutingPriorRegistry getScoutingPriors() {
+    return scoutingPriors;
+  }
+
+  /** Binds a live tracked opponent ID to a pre-match scouted FRC team number. */
+  public boolean bindOpponentTrackToTeam(int trackId, int teamNumber) {
+    return scoutingPriors.bindTrackToTeam(trackId, teamNumber);
+  }
+
   public ScoreProjection getScoreProjection(double elapsedMatchSec) {
     return ledger.projectScores(elapsedMatchSec);
   }
@@ -255,6 +277,7 @@ public final class YaeceEngine {
     ledger.reset();
     arbiter.reset();
     dynamicScoring.reset();
+    scoutingPriors.clearTrackBindings();
     latestRecommendation = TacticalRecommendation.idle(new Pose3d(), "Match reset");
   }
 }

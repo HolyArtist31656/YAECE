@@ -3,6 +3,7 @@ package yaece.tactics;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Pose3d;
 import org.wpilib.math.geometry.Rotation3d;
@@ -10,6 +11,8 @@ import org.wpilib.math.geometry.Translation2d;
 import org.wpilib.math.geometry.Translation3d;
 import yaece.ledger.DefenseModeResolver;
 import yaece.ledger.ScoreProjection;
+import yaece.scouting.OpponentProfile;
+import yaece.scouting.ScoutingPriorRegistry;
 import yaece.season.AllianceSide;
 import yaece.season.DefenseConfigSpec;
 import yaece.season.DefenseStrategyMode;
@@ -32,10 +35,17 @@ public final class DefenseInterceptor {
 
   private final SeasonConfig season;
   private final RobotKinematicsSpec kinematics;
+  private final ScoutingPriorRegistry scoutingPriors;
 
   public DefenseInterceptor(SeasonConfig season, RobotKinematicsSpec kinematics) {
+    this(season, kinematics, new ScoutingPriorRegistry());
+  }
+
+  public DefenseInterceptor(
+      SeasonConfig season, RobotKinematicsSpec kinematics, ScoutingPriorRegistry scoutingPriors) {
     this.season = Objects.requireNonNull(season, "season must not be null");
     this.kinematics = Objects.requireNonNull(kinematics, "kinematics must not be null");
+    this.scoutingPriors = Objects.requireNonNull(scoutingPriors, "scoutingPriors must not be null");
   }
 
   /** Evaluates the best legal defensive action for the current tick. */
@@ -129,7 +139,10 @@ public final class DefenseInterceptor {
 
       double oppDistToGoal = Math.max(0.5, oppXy.getDistance(goalXy));
       double oppSpeed = Math.max(1.5, opp.speedMps());
-      double threat = sitePts / (oppDistToGoal / oppSpeed + 0.5);
+      String siteId = inferredSite != null ? inferredSite.id() : "";
+      double scoutingWeight =
+          scoutingPriors.threatMultiplierFor(opp.trackId(), period, matchTimeRemainingSec, siteId);
+      double threat = (sitePts / (oppDistToGoal / oppSpeed + 0.5)) * scoutingWeight;
 
       if (threat > bestThreat) {
         Translation2d rawIntercept = solveKinematicIntercept(egoXy, oppXy, goalXy, oppSpeed);
@@ -170,7 +183,7 @@ public final class DefenseInterceptor {
         kinematics.estimateTravelTimeSec(egoXy.getDistance(bestIntercept)),
         kinematics.stowMechanismsInDefense(),
         resolved,
-        "Blocking opponent #" + bestOpp.trackId() + " heading toward " + bestSiteId);
+        formatInterceptReason(bestOpp.trackId(), bestSiteId));
   }
 
   private TacticalRecommendation evaluateZoneDefense(
@@ -328,5 +341,21 @@ public final class DefenseInterceptor {
       }
     }
     return null;
+  }
+
+  private String formatInterceptReason(int trackId, String siteId) {
+    Optional<OpponentProfile> profile = scoutingPriors.resolveForTrack(trackId);
+    if (profile.isPresent() && profile.get().teamNumber() > 0) {
+      OpponentProfile p = profile.get();
+      return "Blocking opponent #"
+          + trackId
+          + " (Team "
+          + p.teamNumber()
+          + ", "
+          + p.rolePrior()
+          + ") heading toward "
+          + siteId;
+    }
+    return "Blocking opponent #" + trackId + " heading toward " + siteId;
   }
 }

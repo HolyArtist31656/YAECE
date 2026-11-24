@@ -10,6 +10,7 @@ import yaece.console.PlayMode;
 import yaece.ledger.MatchScoreLedger;
 import yaece.ledger.OptimizationObjective;
 import yaece.ledger.ScoreProjection;
+import yaece.scouting.ScoutingPriorRegistry;
 import yaece.season.AllianceSide;
 import yaece.season.DefenseStrategyMode;
 import yaece.season.GamePieceSpec;
@@ -51,9 +52,18 @@ public final class EncounterArbiter {
   private double lastSwitchTimestampSec = -10.0;
 
   public EncounterArbiter(SeasonConfig season, RobotKinematicsSpec kinematics) {
+    this(season, kinematics, new ScoutingPriorRegistry());
+  }
+
+  public EncounterArbiter(
+      SeasonConfig season, RobotKinematicsSpec kinematics, ScoutingPriorRegistry scoutingPriors) {
     this.season = Objects.requireNonNull(season, "season must not be null");
     this.kinematics = Objects.requireNonNull(kinematics, "kinematics must not be null");
-    this.defenseInterceptor = new DefenseInterceptor(season, kinematics);
+    this.defenseInterceptor =
+        new DefenseInterceptor(
+            season,
+            kinematics,
+            Objects.requireNonNull(scoutingPriors, "scoutingPriors must not be null"));
     this.pathfinder = new FieldPathfinder(season, kinematics.bumperRadiusMeters());
   }
 
