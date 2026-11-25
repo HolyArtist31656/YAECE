@@ -165,4 +165,8 @@ tasks.register('stagePagesSite', Copy) {
   from(layout.projectDirectory.dir('docs')) {
     include 'yaece-user-guide.html'
   }
+  from(layout.projectDirectory.dir('docs')) {
+    include 'yaece-user-guide.html'
+    rename 'yaece-user-guide.html', 'index.html'
+  }
 }
