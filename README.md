@@ -60,6 +60,8 @@ DefenseStrategyMode activeDefense =
 
 ## Documentation
 
-- [YAECE User & Implementation Guide (HTML)](docs/yaece-user-guide.html)
+- [YAECE User & Implementation Guide (Live Site)](https://holyartist31656.github.io/YAECE/)
+- [Hosted Javadoc](https://holyartist31656.github.io/YAECE/javadoc/index.html)
+- **Online Vendordep JSON**: `https://holyartist31656.github.io/YAECE/vendordeps/yaece_commands3.json`
 - [Season Import JSON Schema Reference](docs/SEASON_SCHEMA.md)
 - [Coprocessor NT4 Wire Protocol](docs/COPROCESSOR_WIRE_PROTOCOL.md)
