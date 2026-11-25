@@ -1,7 +1,7 @@
 package yaece.world;
 
 /**
- * Unified 2027 vision gating & dynamic covariance policy combining:
+ * Unified 2027 vision gating &amp; dynamic covariance policy combining:
  *
  * <ul>
  *   <li>Pre-enable Phase 1 hard field alignment / MegaTag1 gyro zeroing ({@code >= 2} tags, {@code
@@ -63,7 +63,6 @@ public final class VisionFusionPolicy {
     double xyStd = baseStdDevMeters * (dist * dist) / tagCount;
 
     if (!robotEnabled) {
-      // Phase 1 pre-enable: MegaTag1 / initial field alignment + gyro zeroing
       if (tagCount >= 2 && ransacInlierRatio >= 0.60) {
         return new FusionDecision(true, true, xyStd * 0.5, 0.02, "pre_enable_phase1_align");
       }
@@ -75,7 +74,6 @@ public final class VisionFusionPolicy {
           "pre_enable_low_tags_or_inliers");
     }
 
-    // Phase 2 enabled: VIO/odometry-primary selective translational corrections
     if (poseJumpMeters > maxPoseJumpMeters) {
       return new FusionDecision(
           false, false, Double.POSITIVE_INFINITY, HIGH_YAW_STD_DEV_RAD, "pose_jump_rejected");
