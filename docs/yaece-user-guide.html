@@ -10,7 +10,7 @@
 <style>
 /*
  * Tier 2 Balanced (Technical Handbook & Implementation Guide) · Editorial serif headline above full-width isometric hero ·
- * Synced 1:1 with verified YAECE v2027.5.0-alpha1 (Phases 1-5, 33/33 JUnit 5 tests green on WPILib 2027_alpha7 / JDK 25) ·
+ * Synced 1:1 with verified YAECE v2027.5.0-alpha1 (Phases 1-8 + Section 6 closure, 54/54 JUnit 5 tests green on WPILib 2027_alpha7 / JDK 25) ·
  * Palette: Cool Sage Mist #EEF3F1 paper, #0F1C18 ink, #0F766E forest teal accent (#0A4D47 AAA text), #C2410C terracotta secondary (#9A3412 AAA text) ·
  * Image radius: 0px · Fonts: Instrument Serif + Plus Jakarta Sans + JetBrains Mono
  */
@@ -310,7 +310,7 @@ tbody td:first-child {
   <header>
     <h1>Implementing YAECE on Your 2027 FRC Robot</h1>
     <p class="deck">A verified developer handbook for <strong>Yet Another Encounter Control Engine (YAECE)</strong>—from vendordep installation and game-agnostic season JSON authoring to sensor-agnostic 6-DoF tracking, dynamic scoring intervals/multipliers, live alliance/opponent score reconciliation, and driver-overridable Commands v3 execution.</p>
-    <p class="living-note"><strong>Verified Release Status (<code>v2027.5.0-alpha1</code>):</strong> All nine packages across Phases 1–5 are implemented, audited 1:1 against source, and verified green with <strong>33/33 JUnit 5 tests passing</strong> on Windows 11 (WPILib <code>2027.0.0-alpha-7</code>, OpenJDK 25, Gradle <code>9.4.1</code>, Spotless <code>8.0.0</code>, <code>-Xmx256m</code>).</p>
+    <p class="living-note"><strong>Verified Release Status (<code>v2027.5.0-alpha1</code>):</strong> All packages across Phases 1–8 and Section 6 core closure are implemented, audited 1:1 against source, and verified green with <strong>54/54 JUnit 5 tests passing</strong> on Windows 11 (WPILib <code>2027.0.0-alpha-7</code>, OpenJDK 25, Gradle <code>9.4.1</code>, Spotless <code>8.0.0</code>, <code>-Xmx256m</code>).</p>
   </header>
 
   <!-- Hero Visual -->
@@ -725,7 +725,7 @@ Command forceZoneDefense     = Command.noRequirements(
     <div class="col-strip-3">
       <div>
         <h3>1. Season, Mirroring &amp; Shifts</h3>
-        <p>Run <code>.\gradlew.bat test</code> (33/33 green in YAECE) and launch AdvantageScope 3D connected to <code>localhost</code>. Verify Blue/Red mirroring, Active/Inactive 25 s HUB transitions, closing-window holds, and 3.5 s pre-open staging.</p>
+        <p>Run <code>.\gradlew.bat test</code> (54/54 green in YAECE) and launch AdvantageScope 3D connected to <code>localhost</code>. Verify Blue/Red mirroring, Active/Inactive 25 s HUB transitions, closing-window holds, and 3.5 s pre-open staging.</p>
       </div>
       <div>
         <h3>2. Pin Guard &amp; Endgame G420 Clamp</h3>
@@ -761,7 +761,7 @@ Command forceZoneDefense     = Command.noRequirements(
       <code>ShootOnTheMoveSolver</code> (closed-form SE(2) 0.03 s phase-delay lookahead, launcher-offset velocity kinematics, exponential drag <code>(1 - exp(-tof * k)) / k</code>, analytical aiming omega FF, geometric exclusion zones), and
       <code>yaece.replay</code> (<code>RecordedTick</code>, <code>YaeceInputRecorder</code>, <code>YaeceReplayHarness</code> for zero-dependency bit-identical JSONL replay).
     </li>
-    <li><strong>Phase 8 (<code>v2027.5.0-alpha1</code>) &mdash; Scouting Priors &amp; YACSim 3D Bridge:</strong>
+    <li><strong>Phase 8 (<code>v2027.4.0-alpha1</code>) &amp; Section 6 Core Closure (<code>v2027.5.0-alpha1</code>) &mdash; Scouting Priors, YACSim 3D Bridge &amp; Ballistic Tables:</strong>
       <code>yaece.scouting</code> (<code>RobotRolePrior</code>, <code>OpponentProfile</code>, <code>ScoutingPriorRegistry.fromJson(...)</code> via <code>MinimalJson</code>) wired into <code>DefenseInterceptor</code> and <code>YaeceEngine</code> to weight high-scoring opponents and endgame specialists, plus
       <code>yaece.bridges.YacSim3dBridge</code> unifying <code>YaeceEngine</code>, CG-derated <code>PolarAutoAlignController</code>, <code>ShootOnTheMoveSolver</code>, and <code>YaeceInputRecorder</code> with zero simulator runtime JARs.
     </li>
