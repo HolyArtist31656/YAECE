@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>YAECE User &amp; Implementation Guide — Yet Another Encounter Control Engine (v2027.4.0-alpha1)</title>
+<title>YAECE User &amp; Implementation Guide — Yet Another Encounter Control Engine (v2027.5.0-alpha1)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /*
  * Tier 2 Balanced (Technical Handbook & Implementation Guide) · Editorial serif headline above full-width isometric hero ·
- * Synced 1:1 with verified YAECE v2027.4.0-alpha1 (Phases 1-5, 33/33 JUnit 5 tests green on WPILib 2027_alpha7 / JDK 25) ·
+ * Synced 1:1 with verified YAECE v2027.5.0-alpha1 (Phases 1-5, 33/33 JUnit 5 tests green on WPILib 2027_alpha7 / JDK 25) ·
  * Palette: Cool Sage Mist #EEF3F1 paper, #0F1C18 ink, #0F766E forest teal accent (#0A4D47 AAA text), #C2410C terracotta secondary (#9A3412 AAA text) ·
  * Image radius: 0px · Fonts: Instrument Serif + Plus Jakarta Sans + JetBrains Mono
  */
@@ -310,7 +310,7 @@ tbody td:first-child {
   <header>
     <h1>Implementing YAECE on Your 2027 FRC Robot</h1>
     <p class="deck">A verified developer handbook for <strong>Yet Another Encounter Control Engine (YAECE)</strong>—from vendordep installation and game-agnostic season JSON authoring to sensor-agnostic 6-DoF tracking, dynamic scoring intervals/multipliers, live alliance/opponent score reconciliation, and driver-overridable Commands v3 execution.</p>
-    <p class="living-note"><strong>Verified Release Status (<code>v2027.4.0-alpha1</code>):</strong> All nine packages across Phases 1–5 are implemented, audited 1:1 against source, and verified green with <strong>33/33 JUnit 5 tests passing</strong> on Windows 11 (WPILib <code>2027.0.0-alpha-7</code>, OpenJDK 25, Gradle <code>9.4.1</code>, Spotless <code>8.0.0</code>, <code>-Xmx256m</code>).</p>
+    <p class="living-note"><strong>Verified Release Status (<code>v2027.5.0-alpha1</code>):</strong> All nine packages across Phases 1–5 are implemented, audited 1:1 against source, and verified green with <strong>33/33 JUnit 5 tests passing</strong> on Windows 11 (WPILib <code>2027.0.0-alpha-7</code>, OpenJDK 25, Gradle <code>9.4.1</code>, Spotless <code>8.0.0</code>, <code>-Xmx256m</code>).</p>
   </header>
 
   <!-- Hero Visual -->
@@ -405,7 +405,7 @@ tbody td:first-child {
         <p>YAECE targets <strong>WPILib 2027 (<code>2027.0.0-alpha-7</code>)</strong>, <strong>Java 25</strong>, and <strong>Commands v3</strong> (<a href="https://docs.wpilib.org/en/2027/docs/yearly-overview/yearly-changelog.html">WPILib 2027 Changelog</a>). It ships zero third-party runtime JARs, so it will never conflict with Jackson, EJML, or vendor libraries.</p>
         <ol class="step-list">
           <li><strong>Online install (GitHub Pages):</strong> In VS Code press <code>Ctrl+Shift+P</code> → <strong>WPILib: Manage Vendor Libraries → Install new libraries (online)</strong> and paste the URL on the right.</li>
-          <li><strong>Local desktop testing (before pushing Pages):</strong> Run <code>.\gradlew.bat publishToMavenLocal</code> inside your <code>YAECE</code> clone, then add <code>mavenLocal()</code> and <code>implementation 'io.github.holyartist31656.yaece:yaece-commands3:2027.4.0-alpha1'</code> to your robot project.</li>
+          <li><strong>Local desktop testing (before pushing Pages):</strong> Run <code>.\gradlew.bat publishToMavenLocal</code> inside your <code>YAECE</code> clone, then add <code>mavenLocal()</code> and <code>implementation 'io.github.holyartist31656.yaece:yaece-commands3:2027.5.0-alpha1'</code> to your robot project.</li>
         </ol>
       </div>
       <div class="col-7">
@@ -413,7 +413,7 @@ tbody td:first-child {
 https://holyartist31656.github.io/YAECE/vendordeps/yaece_commands3.json
 
 # Exact Gradle coordinate (matches vendordeps/yaece_commands3.json)
-io.github.holyartist31656.yaece:yaece-commands3:2027.4.0-alpha1
+io.github.holyartist31656.yaece:yaece-commands3:2027.5.0-alpha1
 
 # Required WPILib 2027 stack in your robot project:
 # - Java 25 toolchain (C:\Users\Public\wpilib\2027_alpha7\jdk)
@@ -477,7 +477,7 @@ io.github.holyartist31656.yaece:yaece-commands3:2027.4.0-alpha1
       <figcaption>Both <code>ROTATIONAL_180</code> and <code>REFLECTION_X</code> are exact involutions verified in <code>FieldMirroringTest</code>. Applying <code>AllianceSide.RED</code> resolves both your scoring targets and the opposing alliance's targets automatically.</figcaption>
     </figure>
 
-<pre><code>// Loading a season file once in RobotContainer (verified v2027.4.0-alpha1 API)
+<pre><code>// Loading a season file once in RobotContainer (verified v2027.5.0-alpha1 API)
 SeasonConfig season = SeasonConfig.fromClasspathResource("/yaece/seasons/season_2026_rebuilt.json");
 // Or load from deploy directory on the robot:
 // SeasonConfig season = SeasonConfig.fromFile(
@@ -506,7 +506,7 @@ SeasonConfig season = SeasonConfig.fromClasspathResource("/yaece/seasons/season_
         <p>Calling <code>yaece.updateAndEvaluate(...)</code> handles everything in one step: it polls <code>yaece/console/*</code> and <code>yaece/perception/*</code> (if enabled), steps the 6-DoF world model and 5-robot IMM filter, evaluates dynamic scoring intervals/multipliers, and publishes 3D Struct telemetry to AdvantageScope.</p>
       </div>
       <div class="col-7">
-<pre><code>// 1. One-time setup in RobotContainer (verified v2027.4.0-alpha1 API)
+<pre><code>// 1. One-time setup in RobotContainer (verified v2027.5.0-alpha1 API)
 YaeceEngine yaece = YaeceEngine.builder(season)
     .withAlliance(AllianceSide.BLUE)
     .withKinematics(RobotKinematicsSpec.FRC_SWERVE_DEFAULT)
@@ -696,7 +696,7 @@ TacticalRecommendation rec = yaece.updateAndEvaluate(
       <figcaption>Start matches in pure Recommendation mode for driver confidence, then bind <code>YaeceCommandFactory.runAutonomousEncounter</code> with instant single-tick joystick preemption.</figcaption>
     </figure>
 
-<pre><code>// Verified WPILib 2027 Commands v3 Binding Pattern (v2027.4.0-alpha1)
+<pre><code>// Verified WPILib 2027 Commands v3 Binding Pattern (v2027.5.0-alpha1)
 BooleanSupplier driverOverride =
     () -&gt; Math.hypot(driver.getLeftX(), driver.getLeftY()) &gt; 0.12
        || Math.abs(driver.getRightX()) &gt; 0.12;
@@ -744,7 +744,7 @@ Command forceZoneDefense     = Command.noRequirements(
 </main>
 
 <section id="phases-6-8-upgrades" style="margin: 2.5rem auto; max-width: 960px; padding: 1.75rem 2rem; border-radius: 14px; border: 1px solid rgba(148,163,184,0.28); background: rgba(15,23,42,0.04);">
-  <h2 style="margin-top:0;">Phases 6&ndash;8 Elite Upgrades (v2027.2.0 &ndash; v2027.4.0-alpha1)</h2>
+  <h2 style="margin-top:0;">Phases 6&ndash;8 Elite Upgrades (v2027.2.0 &ndash; v2027.5.0-alpha1)</h2>
   <p>Building on the core sensor-agnostic world model and dual-mode arbiter, Phases 6&ndash;8 add zero-dependency pathfinding, shot verification, Shoot-on-the-Move physics, deterministic offline replay, scouting priors, and 3D CAD simulation bridging:</p>
   <ul>
     <li><strong>Phase 6 (<code>v2027.2.0-alpha1</code>) &mdash; Pathfinding, Reliability &amp; Safety Gates:</strong>
@@ -761,7 +761,7 @@ Command forceZoneDefense     = Command.noRequirements(
       <code>ShootOnTheMoveSolver</code> (closed-form SE(2) 0.03 s phase-delay lookahead, launcher-offset velocity kinematics, exponential drag <code>(1 - exp(-tof * k)) / k</code>, analytical aiming omega FF, geometric exclusion zones), and
       <code>yaece.replay</code> (<code>RecordedTick</code>, <code>YaeceInputRecorder</code>, <code>YaeceReplayHarness</code> for zero-dependency bit-identical JSONL replay).
     </li>
-    <li><strong>Phase 8 (<code>v2027.4.0-alpha1</code>) &mdash; Scouting Priors &amp; YACSim 3D Bridge:</strong>
+    <li><strong>Phase 8 (<code>v2027.5.0-alpha1</code>) &mdash; Scouting Priors &amp; YACSim 3D Bridge:</strong>
       <code>yaece.scouting</code> (<code>RobotRolePrior</code>, <code>OpponentProfile</code>, <code>ScoutingPriorRegistry.fromJson(...)</code> via <code>MinimalJson</code>) wired into <code>DefenseInterceptor</code> and <code>YaeceEngine</code> to weight high-scoring opponents and endgame specialists, plus
       <code>yaece.bridges.YacSim3dBridge</code> unifying <code>YaeceEngine</code>, CG-derated <code>PolarAutoAlignController</code>, <code>ShootOnTheMoveSolver</code>, and <code>YaeceInputRecorder</code> with zero simulator runtime JARs.
     </li>

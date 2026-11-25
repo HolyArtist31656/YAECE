@@ -20,6 +20,7 @@ import yaece.season.DefenseStrategyMode;
 import yaece.season.MatchPeriod;
 import yaece.season.SeasonConfig;
 import yaece.world.FieldWorldModel;
+import yaece.world.RobotHealthState;
 import yaece.world.WorldSnapshot;
 
 /**
@@ -45,6 +46,7 @@ public final class YaeceEngine {
   private YaeceConsoleNtBridge consoleBridge = null;
   private AdvantageScopeTelemetryBridge telemetryBridge = null;
   private Coprocessor6DoFNtBridge coprocessorBridge = null;
+  private volatile RobotHealthState robotHealth = RobotHealthState.NOMINAL;
   private volatile TacticalRecommendation latestRecommendation =
       TacticalRecommendation.idle(new Pose3d(), "Uninitialized");
 
@@ -251,6 +253,15 @@ public final class YaeceEngine {
     return latestRecommendation;
   }
 
+  /** Feeds optional drivetrain odometry confidence, skid/tilt, and brownout throttle state. */
+  public void updateRobotHealth(RobotHealthState health) {
+    this.robotHealth = Objects.requireNonNull(health, "health must not be null");
+  }
+
+  public RobotHealthState getRobotHealth() {
+    return robotHealth;
+  }
+
   public WorldSnapshot getWorldSnapshot() {
     return world.getSnapshot();
   }
@@ -278,6 +289,7 @@ public final class YaeceEngine {
     arbiter.reset();
     dynamicScoring.reset();
     scoutingPriors.clearTrackBindings();
+    robotHealth = RobotHealthState.NOMINAL;
     latestRecommendation = TacticalRecommendation.idle(new Pose3d(), "Match reset");
   }
 }
