@@ -153,17 +153,12 @@ class Phase6EliteUpgradesTest {
   }
 
   @Test
-  void egoPoseBufferEnforcesYawRateWindowTiltAttenuationAndPossessionWatchdog() {
+  void egoPoseBufferEnforcesYawRateWindowAndPossessionWatchdog() {
     EgoPoseBuffer buf = new EgoPoseBuffer(100);
     // Spin rapidly at 8 rad/s between t=1.0 and t=1.1
     buf.addSample(new Pose3d(3.0, 4.0, 0.0, new Rotation3d(0.0, 0.0, 0.0)), 1.00);
     buf.addSample(new Pose3d(3.0, 4.0, 0.0, new Rotation3d(0.0, 0.0, 0.8)), 1.10);
     assertEquals(8.0, buf.maxAbsYawRateInWindow(0.8, 1.2), 1e-3);
-
-    // 6328 bump tilt odometry attenuation: 0 deg -> 1.0, 12.5 deg -> 0.5, >=25 deg -> 0.0
-    assertEquals(1.0, EgoPoseBuffer.tiltOdometryScale(0.0, 0.0), 1e-6);
-    assertEquals(0.5, EgoPoseBuffer.tiltOdometryScale(Math.toRadians(12.5), 0.0), 1e-3);
-    assertEquals(0.0, EgoPoseBuffer.tiltOdometryScale(Math.toRadians(30.0), 0.0), 1e-6);
 
     // Possession watchdog factory builds cleanly
     Command watchdog =

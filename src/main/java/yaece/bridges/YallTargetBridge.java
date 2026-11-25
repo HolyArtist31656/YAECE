@@ -30,7 +30,7 @@ import yaece.season.SeasonConfig;
  * YallTargetBridge bridge = new YallTargetBridge(seasonConfig, robotToCamera);
  * Optional<GamePieceObservation6DoF> piece =
  *     bridge.toFloorGamePiece(
- *         classId, target.yaw().in(Degrees), target.pitch().in(Degrees),
+ *         classId, target.yawDegrees(), target.pitchDegrees(),
  *         target.confidence(), egoPose3d, captureTimestampSec);
  * }</pre>
  */
