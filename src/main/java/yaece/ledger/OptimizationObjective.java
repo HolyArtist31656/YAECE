@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Yet Another Encounter Control Engine (YAECE) Contributors
+// SPDX-License-Identifier: MIT
+
 package yaece.ledger;
 
 /** Runtime toggle controlling whether YAECE optimizes for Match Points or Ranking Points. */

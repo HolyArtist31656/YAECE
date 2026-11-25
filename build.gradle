@@ -84,7 +84,7 @@ tasks.named('javadoc') {
 spotless {
   java {
     target 'src/**/*.java'
-    googleJavaFormat('1.28.0')
+    googleJavaFormat('1.28.0').skipJavadocFormatting()
     removeUnusedImports()
     trimTrailingWhitespace()
     endWithNewline()

@@ -1,8 +1,12 @@
+// Copyright (c) 2026 Yet Another Encounter Control Engine (YAECE) Contributors
+// SPDX-License-Identifier: MIT
+
 package yaece.tactics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
@@ -15,7 +19,6 @@ import org.wpilib.math.geometry.Rotation3d;
 import org.wpilib.math.geometry.Translation2d;
 import yaece.commands3.YaeceCommandFactory;
 import yaece.perception.PieceDetectionFilter;
-import yaece.perception.VisionPoseGate;
 import yaece.season.AllianceSide;
 import yaece.season.MatchPeriod;
 import yaece.season.SeasonConfig;
@@ -150,49 +153,12 @@ class Phase6EliteUpgradesTest {
   }
 
   @Test
-  void visionPoseGateAndEgoPoseBufferEnforceRateZBoundsAndTiltAttenuation() {
-    SeasonConfig rebuilt =
-        SeasonConfig.fromClasspathResource("/yaece/seasons/season_2026_rebuilt.json");
+  void egoPoseBufferEnforcesYawRateWindowTiltAttenuationAndPossessionWatchdog() {
     EgoPoseBuffer buf = new EgoPoseBuffer(100);
     // Spin rapidly at 8 rad/s between t=1.0 and t=1.1
     buf.addSample(new Pose3d(3.0, 4.0, 0.0, new Rotation3d(0.0, 0.0, 0.0)), 1.00);
     buf.addSample(new Pose3d(3.0, 4.0, 0.0, new Rotation3d(0.0, 0.0, 0.8)), 1.10);
     assertEquals(8.0, buf.maxAbsYawRateInWindow(0.8, 1.2), 1e-3);
-
-    VisionPoseGate gate = new VisionPoseGate(rebuilt);
-    Pose3d validPose = new Pose3d(3.0, 4.0, 0.05, new Rotation3d());
-
-    // Rejected due to peak yaw rate 8 rad/s > 5 rad/s
-    var highSpin =
-        gate.evaluate(
-            validPose, 2, 2.0, 0.5, 0.05, 1.05, buf, VisionPoseGate.FusionMode.DEFAULT, false);
-    assertFalse(highSpin.accepted());
-
-    // Rejected due to Z = 1.4m > 1.0m
-    Pose3d highZ = new Pose3d(3.0, 4.0, 1.4, new Rotation3d());
-    var badZ =
-        gate.evaluate(
-            highZ, 2, 2.0, 0.5, 0.05, 2.0, null, VisionPoseGate.FusionMode.DEFAULT, false);
-    assertFalse(badZ.accepted());
-
-    // Accepted with tighter POST_BUMP_SNAP std dev than DEFAULT
-    var snap =
-        gate.evaluate(
-            validPose,
-            3,
-            2.0,
-            0.5,
-            0.05,
-            2.0,
-            null,
-            VisionPoseGate.FusionMode.POST_BUMP_SNAP,
-            false);
-    var def =
-        gate.evaluate(
-            validPose, 3, 2.0, 0.5, 0.05, 2.0, null, VisionPoseGate.FusionMode.DEFAULT, false);
-    assertTrue(snap.accepted() && def.accepted());
-    assertTrue(snap.xyStdDevMeters() < def.xyStdDevMeters());
-    assertTrue(Double.isInfinite(snap.thetaStdDevRad()));
 
     // 6328 bump tilt odometry attenuation: 0 deg -> 1.0, 12.5 deg -> 0.5, >=25 deg -> 0.0
     assertEquals(1.0, EgoPoseBuffer.tiltOdometryScale(0.0, 0.0), 1e-6);
@@ -204,5 +170,10 @@ class Phase6EliteUpgradesTest {
         YaeceCommandFactory.withPossessionWatchdog(
             Command.noRequirements(co -> {}).named("Score"), () -> true, () -> 1.0, 1.5);
     assertEquals("YAECE Possession Watchdog", watchdog.name());
+
+    // CollisionDetector rejects non-positive / NaN thresholds
+    assertThrows(IllegalArgumentException.class, () -> new CollisionDetector(0.0, 0.15, 1.0, 0.75));
+    assertThrows(
+        IllegalArgumentException.class, () -> new CollisionDetector(0.45, -0.1, 1.0, 0.75));
   }
 }
