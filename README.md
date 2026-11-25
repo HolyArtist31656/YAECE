@@ -1,12 +1,12 @@
 # YAECE — Yet Another Encounter Control Engine
 
-**Yet Another Encounter Control Engine (YAECE)** is a game-agnostic, strictly **sensor-agnostic**, zero-dependency FRC Java 25 vendordep for **WPILib 2027 (`2027.0.0-alpha-7`)** and **Commands v3**. No specific camera, LiDAR, or vision library is required—teams feed standardized `Pose3d` / 6-DoF observations from any source, while optional zero-dependency bridges integrate QuestNav, PhotonVision, LiDAR, AdvantageScope NT4, WPILib DataLog, YAMS/YAGSL, and YACSim 3D.
+**Yet Another Encounter Control Engine (YAECE)** is a game-agnostic, strictly **sensor-agnostic**, zero-dependency FRC Java 25 vendordep for **WPILib 2027 (`2027.0.0-alpha-7`)** and **Commands v3**. No specific camera, LiDAR, or vision library is required—teams feed standardized `Pose3d` / 6-DoF observations from any source, while optional zero-dependency bridges integrate QuestNav, YALL (PhotonVision / Limelight / Synapse), LiDAR, AdvantageScope NT4, WPILib DataLog, YAMS/YAGSL, and YACSim 3D.
 
 ## Locked 2027 Stack (Mirrors YACSim)
 
 | Property | Value |
 | --- | --- |
-| Current Release | **`v2027.5.0-alpha1`** (87 Java classes, **54/54 JUnit 5 tests**) |
+| Current Release | **`v2027.6.5-alpha1`** (96 Java classes, **68/68 JUnit 5 tests**) |
 | WPILib Version | `2027.0.0-alpha-7` (`2027_alpha7`, `org.wpilib.*`) |
 | Java Toolchain | Java 25 (`C:\Users\Public\wpilib\2027_alpha7\jdk`) |
 | Gradle | `9.4.1` |
@@ -15,15 +15,15 @@
 | Formatting | Spotless (`googleJavaFormat`) |
 | Target Hardware | 2 GB RAM Limelight SystemCore (`-Xmx256m` verified) |
 
-## Capabilities (`v2027.5.0-alpha1` — Phases 1–8 + Section 6 Core Closure)
+## Capabilities (`v2027.6.5-alpha1` — Phases 1–8 + Section 6 Core Closure)
 
 1. **Vendordep & GitHub Pages Distribution**: `build.gradle`, `gradle.properties`, `vendordeps/yaece_commands3.json`, and `.github/workflows/publish-pages.yml` (tag-gated `v*` releases).
 2. **Zero-Dependency JSON Engine (`yaece.json`)**: Strict RFC 8259 `MinimalJson` parser with line/column diagnostics.
 3. **Extended Season Configuration (`yaece.season`)**: `SeasonConfig` with `FieldType` (`WELDED` / `ANDYMARK`), `CompositeZone` boolean operations (`UNION`, `INTERSECTION`, `DIFFERENCE`, `COMPLEMENT`), `autoPoints`/`teleopPoints`, site `tags`, `pinRules` (FRC 3 s / 1.83 m), `restrictedZones` (`HARD_NO_ENTRY`, `NO_OPPONENT_CONTACT`, `SOFT_AVOIDANCE` with Endgame time windows), `scoringObjectives`, `defenseDefaults`, and pre-cached `FieldMirroring`.
-4. **6-DoF World Model & Multi-Agent Tracking (`yaece.world`)**: Thread-safe `FieldWorldModel`, 5-robot IMM tracker, `EgoPoseBuffer` with bump tilt odometry attenuation, `VisionPoseGate`, `PieceDetectionFilter` (4-gate intake filter), `CollisionDetector`, and `RobotHealthState` (odometry confidence, skid/tilt, brownout throttle, and impact signals).
+4. **6-DoF World Model & Multi-Agent Tracking (`yaece.world`)**: Thread-safe `FieldWorldModel`, 5-robot IMM tracker, `EgoPoseBuffer` with bump tilt odometry attenuation, `YALL (`yall.filter.VisionPoseFilter`)`, `PieceDetectionFilter` (4-gate intake filter), `CollisionDetector`, and `RobotHealthState` (odometry confidence, skid/tilt, brownout throttle, and impact signals).
 5. **Tactical Arbitration, Pathfinding & Elite Scoring (`yaece.tactics`, `yaece.ballistics`)**: Epoch-cached A\* `FieldPathfinder` (3 clearance profiles + exact AABB inflation), velocity-projected arrival-race arbiter, `PolarAutoAlignController`, `ShootOnTheMoveSolver`, JSON-loadable `BallisticTable` (`BallisticShotParams`), `ShotReadinessGate` (volley hysteresis, timeout, bypass, and pose-free SetShot fallback), `HazardAutoTuck`, and `YaeceDiagnostic` boot validation.
 6. **Live Score Ledger & Scouting Priors (`yaece.ledger`, `yaece.scouting`)**: `MatchScoreLedger` synced with `DynamicScoringState` multipliers, `ScoreProjection`, `OptimizationObjective` (`MATCH_POINTS` vs. `RANKING_POINTS`), `DefenseModeResolver`, and `ScoutingPriorRegistry` (`OpponentProfile`, `RobotRolePrior`).
-7. **Deterministic Replay & Bridges (`yaece.replay`, `yaece.bridges`)**: Tick-by-tick `YaeceInputRecorder` + `YaeceReplayHarness` (JSONL), `YaeceDataLogSink` (direct WPILib `.wpilog` recording), `AdvantageScopeTelemetryBridge`, `CoprocessorNtBridge`, and `YacSim3dBridge` (live-verified with YACSim `v2027.5.0-alpha1` in `YAECE-RebuiltSim-Example`).
+7. **Deterministic Replay & Bridges (`yaece.replay`, `yaece.bridges`)**: Tick-by-tick `YaeceInputRecorder` + `YaeceReplayHarness` (JSONL), `YaeceDataLogSink` (direct WPILib `.wpilog` recording), `AdvantageScopeTelemetryBridge`, `CoprocessorNtBridge`, and `YacSim3dBridge` (live-verified with YACSim `v2027.6.5-alpha1` in `YAECE-RebuiltSim-Example`).
 
 ## Quick Start
 
@@ -65,3 +65,9 @@ DefenseStrategyMode activeDefense =
 - **Online Vendordep JSON**: `https://holyartist31656.github.io/YAECE/vendordeps/yaece_commands3.json`
 - [Season Import JSON Schema Reference](docs/SEASON_SCHEMA.md)
 - [Coprocessor NT4 Wire Protocol](docs/COPROCESSOR_WIRE_PROTOCOL.md)
+
+## Waypoint A & B Upgrades (`v2027.6.0`–`v2027.6.5-alpha1`) & YASS Ecosystem Separation
+
+- **Strict YASS 4-Library Boundary**: Camera wrappers, AprilTag pose-estimate filtering (`VisionPoseFilter`), multi-camera pose fusion (`VisionSystem`), and AprilTag simulation (`VisionSim`) live exclusively in **YALL**. Hardware-level swerve wheel-skid detection (`SkidDetector`) and tilt-scaled odometry (`TiltOdometryScaler`) live in **YAMS**. 3D CAD/URDF geometry, OBB collision, RK4 ballistics, and non-camera environment sensors (`QuestNavSim`, `Lidar3dSim`, `FrictionCircleSlipModel`) live in **YACSim**.
+- **Vendor-Neutral YALL Bridge (`yaece.bridges.YallTargetBridge`)**: Consumes YALL's normalized `VisionTarget` (`yawDegrees` positive-right, `pitchDegrees` positive-up) with zero third-party runtime JARs.
+- **Perception, Control & Hardening (`v2027.6.0`–`v2027.6.5-alpha1`)**: Added `SlotOccupancyGrid` (OctoMap clamped log-odds `[0.12, 0.97]`), `TRatioWaypointHandoff` (BLine-style lateral-bump handoff), `CbfSafetyFilter` (closed-form signed-distance CBF-QP with Nash ally vs. Stackelberg opponent weighting), `TopologicalPassingCommitment` (COMPASS hysteresis + dwell), `TurretChassisAuthoritySolver`, `InitWallTimeWatchdog` (`System.nanoTime()`), and `CommandBindingGuard` (`allwpilib #9558` duplicate-binding guard).

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Yet Another Encounter Control Engine (YAECE) Contributors
+// SPDX-License-Identifier: MIT
+
 package yaece.scouting;
 
 import java.util.List;

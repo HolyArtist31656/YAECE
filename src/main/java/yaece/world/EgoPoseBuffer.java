@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Yet Another Encounter Control Engine (YAECE) Contributors
+// SPDX-License-Identifier: MIT
+
 package yaece.world;
 
 import java.util.Objects;
@@ -12,7 +15,6 @@ import org.wpilib.math.geometry.Translation3d;
  * bump-traversal odometry attenuation (FRC 6328 2026).
  */
 public final class EgoPoseBuffer {
-  private static final double DEFAULT_FULL_TILT_ATTENUATION_DEG = 25.0;
 
   private final int capacity;
   private final double[] timestamps;
@@ -146,18 +148,6 @@ public final class EgoPoseBuffer {
       maxRate = Math.max(maxRate, Math.abs(dYaw) / dt);
     }
     return maxRate;
-  }
-
-  /**
-   * Computes tilt-compensated planar odometry attenuation {@code [0..1]} for bump/ramp traversal
-   * (matching FRC 6328's 2026 REBUILT formula: {@code 1 - clamp(tiltDeg / 25.0, 0, 1)} where {@code
-   * tiltDeg = deg(acos(cos(pitch) * cos(roll)))}).
-   */
-  public static double tiltOdometryScale(double pitchRad, double rollRad) {
-    double cosTilt = Math.max(-1.0, Math.min(1.0, Math.cos(pitchRad) * Math.cos(rollRad)));
-    double tiltDeg = Math.toDegrees(Math.acos(cosTilt));
-    double ratio = Math.max(0.0, Math.min(1.0, tiltDeg / DEFAULT_FULL_TILT_ATTENUATION_DEG));
-    return 1.0 - ratio;
   }
 
   public synchronized void clear() {

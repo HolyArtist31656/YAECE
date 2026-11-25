@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Yet Another Encounter Control Engine (YAECE) Contributors
+// SPDX-License-Identifier: MIT
+
 package yaece.control;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,7 +15,6 @@ import yaece.ballistics.TurretChassisAuthoritySolver;
 import yaece.commands3.CommandBindingGuard;
 import yaece.navigation.TRatioWaypointHandoff;
 import yaece.world.SlotOccupancyGrid;
-import yaece.world.VisionFusionPolicy;
 
 /**
  * CI soak and adversarial fault-injection suite closing VER-03 (120A+ brownout throttling &amp;
@@ -27,12 +29,7 @@ class FullMatchSoakAndBrownoutTest {
   private static final int FULL_MATCH_TICKS = 8_000; // 160 s @ 50 Hz
 
   private record YaeceSoakMetrics(
-      Translation2d finalPos,
-      int visionAccepted,
-      int visionRejected,
-      int slotClearEvents,
-      int bindingCount,
-      int slowTicksOver2Ms) {}
+      Translation2d finalPos, int slotClearEvents, int bindingCount, int slowTicksOver2Ms) {}
 
   @Test
   void brownoutThrottlingAndStallRecoveryAcrossThreeFaultBursts() {
@@ -109,10 +106,6 @@ class FullMatchSoakAndBrownoutTest {
     Translation2d blueFlipped = flipRotational(blue.finalPos());
     assertEquals(blueFlipped.getX(), red.finalPos().getX(), 1e-4);
     assertEquals(blueFlipped.getY(), red.finalPos().getY(), 1e-4);
-
-    // Vision policy accepted good frames and rejected blackout/high-spin frames
-    assertTrue(blue.visionAccepted() > 4_000 && red.visionAccepted() > 4_000);
-    assertTrue(blue.visionRejected() > 150 && red.visionRejected() > 150);
 
     // Clamped log-odds occupancy grid cleared saturated slots repeatedly
     assertTrue(blue.slotClearEvents() >= 5 && red.slotClearEvents() >= 5);
@@ -194,7 +187,6 @@ class FullMatchSoakAndBrownoutTest {
     TopologicalPassingCommitment passing = new TopologicalPassingCommitment(0.25, 0.40);
     TurretChassisAuthoritySolver sotm = new TurretChassisAuthoritySolver(1.25, 2.0, 0.5);
     SlotOccupancyGrid grid = new SlotOccupancyGrid();
-    VisionFusionPolicy visionPolicy = new VisionFusionPolicy();
     CommandBindingGuard guard = new CommandBindingGuard();
     AtomicInteger bindCalls = new AtomicInteger(0);
 
@@ -228,8 +220,6 @@ class FullMatchSoakAndBrownoutTest {
 
     Translation2d pos = path.get(0);
     int activeIdx = 1;
-    int visionAccepted = 0;
-    int visionRejected = 0;
     int slotClears = 0;
     int slowTicks = 0;
 
@@ -269,18 +259,6 @@ class FullMatchSoakAndBrownoutTest {
               0.70);
       assertTrue(Double.isFinite(sol.fieldAimYawRad()));
 
-      // Vision policy: pre-enable first 50 ticks, 3 s blackout at t = 40 s, high-spin at t = 100 s
-      boolean enabled = tick >= 50;
-      boolean blackout = tick >= 2_000 && tick < 2_150;
-      double omegaDeg = (tick >= 5_000 && tick < 5_050) ? 420.0 : 45.0;
-      VisionFusionPolicy.FusionDecision dec =
-          visionPolicy.evaluate(enabled, blackout ? 0 : 3, 2.5, 0.90, 0.12, omegaDeg, true);
-      if (dec.accepted()) {
-        visionAccepted++;
-      } else {
-        visionRejected++;
-      }
-
       // Exercise clamped log-odds slot occupancy every 1,000 ticks (saturate then clear in ~9
       // misses)
       int slotPhase = tick % 1_000;
@@ -299,8 +277,7 @@ class FullMatchSoakAndBrownoutTest {
       }
     }
 
-    return new YaeceSoakMetrics(
-        pos, visionAccepted, visionRejected, slotClears, bindCalls.get(), slowTicks);
+    return new YaeceSoakMetrics(pos, slotClears, bindCalls.get(), slowTicks);
   }
 
   private static Translation2d flipRotational(Translation2d p) {

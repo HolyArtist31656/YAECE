@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Yet Another Encounter Control Engine (YAECE) Contributors
+// SPDX-License-Identifier: MIT
+
 package yaece.season;
 
 /** Defensive targeting strategy selectable by the driver or automated by YAECE. */

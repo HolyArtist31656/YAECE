@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Yet Another Encounter Control Engine (YAECE) Contributors
+// SPDX-License-Identifier: MIT
+
 package yaece.tactics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -9,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import yaece.commands3.CommandBindingGuard;
 import yaece.util.InitWallTimeWatchdog;
 import yaece.world.SlotOccupancyGrid;
-import yaece.world.VisionFusionPolicy;
 
 class Phase9PerceptionAndHardeningTest {
 
@@ -35,42 +37,6 @@ class Phase9PerceptionAndHardeningTest {
     grid.recordMiss("hub_slot_1", 1.20);
     grid.recordMiss("hub_slot_1", 1.22);
     assertTrue(grid.isFree("hub_slot_1"));
-  }
-
-  @Test
-  void visionFusionPolicyHandlesPreEnableGyroZeroAndEnabledGating() {
-    VisionFusionPolicy policy = new VisionFusionPolicy();
-
-    // Pre-enable Phase 1: >=2 tags and >=60% inliers triggers hardResetPose + low yaw std-dev
-    var phase1 = policy.evaluate(false, 2, 2.5, 0.65, 5.0, 0.0, false);
-    assertTrue(phase1.accepted());
-    assertTrue(phase1.hardResetPose());
-    assertTrue(phase1.thetaStdDevRad() < 0.1);
-
-    // Enabled Phase 2: rejects >360 deg/s angular velocity
-    var spinReject = policy.evaluate(true, 3, 2.0, 0.95, 0.1, 420.0, true);
-    assertFalse(spinReject.accepted());
-    assertEquals("high_angular_rate", spinReject.reason());
-
-    // Enabled Phase 2: rejects >2.0 m polycarbonate reflection jump
-    var jumpReject = policy.evaluate(true, 3, 2.0, 0.95, 2.6, 10.0, true);
-    assertFalse(jumpReject.accepted());
-    assertEquals("pose_jump_rejected", jumpReject.reason());
-
-    // Enabled Phase 2: 3+ tag shooter camera gets 0.35x XY trust boost and high yaw std-dev
-    var normal = policy.evaluate(true, 3, 3.0, 0.90, 0.15, 25.0, false);
-    var shooter = policy.evaluate(true, 3, 3.0, 0.90, 0.15, 25.0, true);
-    assertTrue(normal.accepted() && shooter.accepted());
-    assertFalse(shooter.hardResetPose());
-    assertEquals(normal.xyStdDevMeters() * 0.35, shooter.xyStdDevMeters(), 1e-6);
-    assertEquals(VisionFusionPolicy.HIGH_YAW_STD_DEV_RAD, shooter.thetaStdDevRad(), 1e-6);
-  }
-
-  @Test
-  void visionFusionPolicyRejectsZeroTagsAndFarSingleTag() {
-    VisionFusionPolicy policy = new VisionFusionPolicy();
-    assertFalse(policy.evaluate(true, 0, 2.0, 1.0, 0.0, 0.0, false).accepted());
-    assertFalse(policy.evaluate(true, 1, 4.5, 0.95, 0.1, 0.0, false).accepted());
   }
 
   @Test

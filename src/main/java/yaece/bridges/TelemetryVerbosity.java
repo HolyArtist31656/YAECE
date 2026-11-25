@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Yet Another Encounter Control Engine (YAECE) Contributors
+// SPDX-License-Identifier: MIT
+
 package yaece.bridges;
 
 /** Controls NetworkTables 4 telemetry volume published by {@link AdvantageScopeTelemetryBridge}. */
