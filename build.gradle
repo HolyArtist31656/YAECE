@@ -35,7 +35,7 @@ repositories {
 }
 
 dependencies {
-  // Zero third-party runtime JARs: compile strictly against WPILib 2027_alpha7.
+  // Zero third-party runtime JARs: compile strictly against WPILib 2027_alpha8.
   compileOnly "org.wpilib.wpimath:wpimath-java:${wpilibVersion}"
   compileOnly "org.wpilib.wpiunits:wpiunits-java:${wpilibVersion}"
   compileOnly "org.wpilib.wpiutil:wpiutil-java:${wpilibVersion}"
