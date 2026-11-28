@@ -39,6 +39,87 @@ public final class FieldWorldModel {
   private static final double ROBOT_MAX_OCCLUDED_SEC = 1.5;
   private static final double MAX_OBSERVATION_LATENCY_SEC = 0.25;
   private static final double MAX_ROBOT_SPEED_MPS = 6.5;
+  private static final double DEFAULT_FOV_NEGATIVE_DECAY_FACTOR = 0.45;
+  private static final int DEFAULT_FOV_CLEAR_MIN_CONSECUTIVE_MISSES = 2;
+  private static final double FOV_OBSERVATION_MATCH_EPS_SEC = 1e-4;
+  private static final double OCCLUSION_RADIUS_PADDING_METERS = 0.10;
+
+  /**
+   * Camera horizontal field-of-view specification used for negative-observation clearing (FRC 6328
+   * {@code ObjectDetection} pattern): tracked game pieces inside an unoccluded camera frustum that
+   * are absent from consecutive frames decay rapidly and are pruned without waiting for the full
+   * {@value #PIECE_MAX_AGE_SEC} s timeout.
+   *
+   * @param cameraName Human-readable camera identifier.
+   * @param robotToCamera Robot-to-camera mounting transform in meters and radians.
+   * @param horizontalFovDeg Horizontal field of view in degrees (in {@code (0, 180)}).
+   * @param minRangeMeters Minimum reliable detection distance in meters (&ge; 0).
+   * @param maxRangeMeters Maximum reliable negative-clearing distance in meters (&gt; {@code
+   *     minRangeMeters}).
+   * @param negativeClearMarginDeg Angular inset from the horizontal frustum edge in degrees (&ge;
+   *     0) to avoid false clearing near image borders.
+   */
+  public record CameraFovSpec(
+      String cameraName,
+      Transform3d robotToCamera,
+      double horizontalFovDeg,
+      double minRangeMeters,
+      double maxRangeMeters,
+      double negativeClearMarginDeg) {
+
+    /** Default angular border inset in degrees to avoid edge-of-frame false clears. */
+    public static final double DEFAULT_EDGE_MARGIN_DEG = 4.0;
+
+    /** Compact constructor validating frustum parameters. */
+    public CameraFovSpec {
+      Objects.requireNonNull(cameraName, "cameraName must not be null");
+      Objects.requireNonNull(robotToCamera, "robotToCamera must not be null");
+      if (!Double.isFinite(horizontalFovDeg)
+          || horizontalFovDeg <= 0.0
+          || horizontalFovDeg >= 180.0) {
+        throw new IllegalArgumentException("horizontalFovDeg must be in (0, 180)");
+      }
+      if (!Double.isFinite(minRangeMeters) || minRangeMeters < 0.0) {
+        throw new IllegalArgumentException("minRangeMeters must be finite and >= 0");
+      }
+      if (!Double.isFinite(maxRangeMeters) || maxRangeMeters <= minRangeMeters) {
+        throw new IllegalArgumentException("maxRangeMeters must be finite and > minRangeMeters");
+      }
+      if (!Double.isFinite(negativeClearMarginDeg)
+          || negativeClearMarginDeg < 0.0
+          || negativeClearMarginDeg >= horizontalFovDeg * 0.5) {
+        throw new IllegalArgumentException(
+            "negativeClearMarginDeg must be in [0, horizontalFovDeg / 2)");
+      }
+    }
+
+    /**
+     * Creates a {@link CameraFovSpec} using {@value #DEFAULT_EDGE_MARGIN_DEG} deg edge margin.
+     *
+     * @param cameraName Human-readable camera identifier.
+     * @param robotToCamera Robot-to-camera mounting transform.
+     * @param horizontalFovDeg Horizontal FOV in degrees.
+     * @param minRangeMeters Minimum detection range in meters.
+     * @param maxRangeMeters Maximum negative-clearing range in meters.
+     * @return Validated {@link CameraFovSpec}.
+     */
+    public static CameraFovSpec of(
+        String cameraName,
+        Transform3d robotToCamera,
+        double horizontalFovDeg,
+        double minRangeMeters,
+        double maxRangeMeters) {
+      return new CameraFovSpec(
+          cameraName,
+          robotToCamera,
+          horizontalFovDeg,
+          minRangeMeters,
+          maxRangeMeters,
+          DEFAULT_EDGE_MARGIN_DEG);
+    }
+  }
+
+  private record CameraSweep(CameraFovSpec camera, double timestampSec) {}
 
   private static final class PieceTrack {
     final int id;
@@ -51,6 +132,7 @@ public final class FieldWorldModel {
     double orientConf;
     double existConf;
     double lastSeenSec;
+    int consecutiveFovMisses;
 
     PieceTrack(
         int id,
@@ -111,8 +193,10 @@ public final class FieldWorldModel {
   private final Object ingestionLock = new Object();
   private final List<GamePieceObservation6DoF> pendingPieces = new ArrayList<>();
   private final List<RobotObservation> pendingRobots = new ArrayList<>();
+  private final List<CameraSweep> pendingCameraSweeps = new ArrayList<>();
   private final List<GamePieceObservation6DoF> scratchPieces = new ArrayList<>();
   private final List<RobotObservation> scratchRobots = new ArrayList<>();
+  private final List<CameraSweep> scratchCameraSweeps = new ArrayList<>();
 
   private int nextPieceTrackId = 1;
   private int nextRobotTrackId = 1;
@@ -145,6 +229,38 @@ public final class FieldWorldModel {
         pendingRobots.addAll(observations);
       }
     }
+  }
+
+  /**
+   * Records a complete camera frame (zero or more game-piece detections) for {@code camera} at
+   * {@code timestampSec}. Any tracked game pieces clearly inside {@code camera}'s unoccluded
+   * horizontal frustum that were not refreshed by this frame accumulate negative observations and
+   * clear rapidly once stolen or intaked.
+   *
+   * @param camera Camera frustum specification.
+   * @param observations Detections seen in this camera frame (may be empty or null).
+   * @param timestampSec Capture timestamp in seconds.
+   */
+  public void recordCameraFrame(
+      CameraFovSpec camera, List<GamePieceObservation6DoF> observations, double timestampSec) {
+    Objects.requireNonNull(camera, "camera must not be null");
+    synchronized (ingestionLock) {
+      if (observations != null && !observations.isEmpty()) {
+        pendingPieces.addAll(observations);
+      }
+      pendingCameraSweeps.add(new CameraSweep(camera, timestampSec));
+    }
+  }
+
+  /**
+   * Convenience helper recording an empty camera frame (no game pieces detected) for {@code camera}
+   * at {@code timestampSec}.
+   *
+   * @param camera Camera frustum specification.
+   * @param timestampSec Capture timestamp in seconds.
+   */
+  public void recordEmptyCameraObservation(CameraFovSpec camera, double timestampSec) {
+    recordCameraFrame(camera, List.of(), timestampSec);
   }
 
   /**
@@ -182,14 +298,18 @@ public final class FieldWorldModel {
     // 2. Atomically drain cross-thread observation queues & associate
     scratchPieces.clear();
     scratchRobots.clear();
+    scratchCameraSweeps.clear();
     synchronized (ingestionLock) {
       scratchPieces.addAll(pendingPieces);
       pendingPieces.clear();
       scratchRobots.addAll(pendingRobots);
       pendingRobots.clear();
+      scratchCameraSweeps.addAll(pendingCameraSweeps);
+      pendingCameraSweeps.clear();
     }
     processPendingPieces(nowSec);
     processPendingRobots(nowSec);
+    applyFovNegativeObservationClearing(nowSec);
 
     // 4. Prune expired tracks
     pieceTracks.removeIf(p -> (nowSec - p.lastSeenSec) > PIECE_MAX_AGE_SEC || p.existConf < 0.12);
@@ -263,9 +383,11 @@ public final class FieldWorldModel {
     synchronized (ingestionLock) {
       pendingPieces.clear();
       pendingRobots.clear();
+      pendingCameraSweeps.clear();
     }
     scratchPieces.clear();
     scratchRobots.clear();
+    scratchCameraSweeps.clear();
     lastStepSec = -1.0;
     snapshot = WorldSnapshot.EMPTY;
   }
@@ -326,7 +448,9 @@ public final class FieldWorldModel {
         int c = assign[r];
         if (c >= 0) {
           matchedObs[c] = true;
-          updatePieceTrack(pieceTracks.get(r), valid.get(c), fieldPoses.get(c));
+          PieceTrack matchedTrack = pieceTracks.get(r);
+          matchedTrack.consecutiveFovMisses = 0;
+          updatePieceTrack(matchedTrack, valid.get(c), fieldPoses.get(c));
         }
       }
     }
@@ -489,5 +613,82 @@ public final class FieldWorldModel {
       return 0.0;
     }
     return Math.max(-MAX_ROBOT_SPEED_MPS, Math.min(MAX_ROBOT_SPEED_MPS, v));
+  }
+
+  private void applyFovNegativeObservationClearing(double nowSec) {
+    if (scratchCameraSweeps.isEmpty() || pieceTracks.isEmpty()) {
+      return;
+    }
+    for (CameraSweep sweep : scratchCameraSweeps) {
+      if ((nowSec - sweep.timestampSec()) > MAX_OBSERVATION_LATENCY_SEC) {
+        continue;
+      }
+      CameraFovSpec cam = sweep.camera();
+      Pose3d egoAtTime =
+          egoBuffer
+              .sampleAt(sweep.timestampSec())
+              .orElse(egoBuffer.latestPose().orElse(new Pose3d()));
+      Pose3d camPose = egoAtTime.transformBy(cam.robotToCamera());
+      double camX = camPose.getX();
+      double camY = camPose.getY();
+      double camYaw = camPose.getRotation().getZ();
+      double effectiveHalfFovRad =
+          Math.toRadians(cam.horizontalFovDeg() * 0.5 - cam.negativeClearMarginDeg());
+
+      for (PieceTrack pt : pieceTracks) {
+        if (pt.lastSeenSec >= sweep.timestampSec() - FOV_OBSERVATION_MATCH_EPS_SEC) {
+          continue;
+        }
+        double dx = pt.x - camX;
+        double dy = pt.y - camY;
+        double range = Math.hypot(dx, dy);
+        if (range < cam.minRangeMeters() || range > cam.maxRangeMeters()) {
+          continue;
+        }
+        double bearing = wrapAngleRad(Math.atan2(dy, dx) - camYaw);
+        if (Math.abs(bearing) > effectiveHalfFovRad) {
+          continue;
+        }
+        if (isLineOfSightOccludedByRobot(camX, camY, pt.x, pt.y)) {
+          continue;
+        }
+        pt.consecutiveFovMisses++;
+        pt.existConf *= DEFAULT_FOV_NEGATIVE_DECAY_FACTOR;
+        if (pt.consecutiveFovMisses >= DEFAULT_FOV_CLEAR_MIN_CONSECUTIVE_MISSES) {
+          pt.existConf = 0.0;
+        }
+      }
+    }
+    scratchCameraSweeps.clear();
+  }
+
+  private boolean isLineOfSightOccludedByRobot(double x1, double y1, double x2, double y2) {
+    double segDx = x2 - x1;
+    double segDy = y2 - y1;
+    double segLenSq = segDx * segDx + segDy * segDy;
+    if (segLenSq <= 1e-9) {
+      return false;
+    }
+    for (RobotTrack rt : robotTracks) {
+      double t = ((rt.x - x1) * segDx + (rt.y - y1) * segDy) / segLenSq;
+      if (t <= 0.0 || t >= 1.0) {
+        continue;
+      }
+      double projX = x1 + t * segDx;
+      double projY = y1 + t * segDy;
+      double dist = Math.hypot(rt.x - projX, rt.y - projY);
+      if (dist <= rt.radiusMeters + OCCLUSION_RADIUS_PADDING_METERS) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static double wrapAngleRad(double rad) {
+    double r = (rad + Math.PI) % (2.0 * Math.PI);
+    if (r < 0.0) {
+      r += 2.0 * Math.PI;
+    }
+    return r - Math.PI;
   }
 }
