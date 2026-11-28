@@ -35,6 +35,12 @@ import yaece.world.WorldSnapshot;
  */
 public final class DefenseInterceptor {
   private static final double INTERCEPT_LEAD_MARGIN_SEC = 0.25;
+  private static final double SCOUTED_CRUISE_SPEED_RATIO = 0.75;
+  private static final double MIN_INTERCEPT_SPEED_MPS = 1.5;
+  private static final double INTERCEPT_STANDOFF_MARGIN_METERS = 0.15;
+  private static final double ALLY_CORRIDOR_LOOKAHEAD_SEC = 1.0;
+  private static final double ALLY_KEEP_OUT_MARGIN_METERS = 0.20;
+  private static final double MIN_DIRECTION_NORM = 1e-4;
 
   private final SeasonConfig season;
   private final RobotKinematicsSpec kinematics;
@@ -129,8 +135,9 @@ public final class DefenseInterceptor {
         continue; // Skip opponent while cooling down from a prior pin
       }
 
+      OpponentProfile profile = scoutingPriors.resolveOrDefaultForTrack(opp.trackId());
       Translation2d oppXy = opp.pose3d().getTranslation().toTranslation2d();
-      ScoringSiteSpec inferredSite = inferOpponentTargetSite(opp, oppAlliance, period);
+      ScoringSiteSpec inferredSite = inferOpponentTargetSite(opp, profile, oppAlliance, period);
       Translation2d goalXy =
           inferredSite != null
               ? season
@@ -141,17 +148,28 @@ public final class DefenseInterceptor {
       double sitePts = inferredSite != null ? inferredSite.pointsFor(period) : 2.0;
 
       double oppDistToGoal = Math.max(0.5, oppXy.getDistance(goalXy));
-      double oppSpeed = Math.max(1.5, opp.speedMps());
+      double scoutedSpeedFloor =
+          Math.max(MIN_INTERCEPT_SPEED_MPS, SCOUTED_CRUISE_SPEED_RATIO * profile.maxSpeedMps());
+      double oppSpeed =
+          Math.max(scoutedSpeedFloor, Math.min(opp.speedMps(), profile.maxSpeedMps()));
       String siteId = inferredSite != null ? inferredSite.id() : "";
       double scoutingWeight =
           scoutingPriors.threatMultiplierFor(opp.trackId(), period, matchTimeRemainingSec, siteId);
       double threat = (sitePts / (oppDistToGoal / oppSpeed + 0.5)) * scoutingWeight;
 
       if (threat > bestThreat) {
-        Translation2d rawIntercept = solveKinematicIntercept(egoXy, oppXy, goalXy, oppSpeed);
+        double standoffMeters =
+            kinematics.bumperRadiusMeters()
+                + profile.bumperRadiusMeters()
+                + INTERCEPT_STANDOFF_MARGIN_METERS;
+        Translation2d rawIntercept =
+            solveKinematicIntercept(egoXy, oppXy, goalXy, oppSpeed, standoffMeters);
+        Translation2d allySafe =
+            applyAllyCorridorKeepOut(
+                rawIntercept, world.allies(), egoXy, ourAlliance, period, matchTimeRemainingSec);
         Translation2d clamped =
             LaneClearanceChecker.clampOutsideRestrictedZones(
-                rawIntercept,
+                allySafe,
                 egoXy,
                 season,
                 ourAlliance,
@@ -259,7 +277,7 @@ public final class DefenseInterceptor {
   }
 
   private ScoringSiteSpec inferOpponentTargetSite(
-      TrackedRobot opp, AllianceSide oppAlliance, MatchPeriod period) {
+      TrackedRobot opp, OpponentProfile profile, AllianceSide oppAlliance, MatchPeriod period) {
     Translation2d oppXy = opp.pose3d().getTranslation().toTranslation2d();
     double speed = opp.speedMps();
     ScoringSiteSpec best = null;
@@ -277,7 +295,8 @@ public final class DefenseInterceptor {
         double cosTheta = (opp.vxMps() * dx + opp.vyMps() * dy) / (speed * dist);
         alignment = Math.max(0.05, 0.5 * (cosTheta + 1.0));
       }
-      double score = (site.pointsFor(period) * alignment) / (dist + 1.0);
+      double sitePref = profile.sitePreferenceMultiplier(site.id());
+      double score = (site.pointsFor(period) * alignment * sitePref) / (dist + 1.0);
       if (score > bestScore) {
         bestScore = score;
         best = site;
@@ -287,10 +306,16 @@ public final class DefenseInterceptor {
   }
 
   private Translation2d solveKinematicIntercept(
-      Translation2d egoXy, Translation2d oppXy, Translation2d goalXy, double oppSpeedMps) {
+      Translation2d egoXy,
+      Translation2d oppXy,
+      Translation2d goalXy,
+      double oppSpeedMps,
+      double standoffMeters) {
     double totalOppDist = oppXy.getDistance(goalXy);
+    double minS =
+        totalOppDist > MIN_DIRECTION_NORM ? Math.min(0.85, standoffMeters / totalOppDist) : 0.2;
     for (int i = 2; i <= 10; i++) {
-      double s = i / 10.0;
+      double s = Math.max(minS, i / 10.0);
       Translation2d pt =
           new Translation2d(
               oppXy.getX() + s * (goalXy.getX() - oppXy.getX()),
@@ -301,10 +326,109 @@ public final class DefenseInterceptor {
         return pt;
       }
     }
-    // Fallback: guard 1.0 m in front of the goal along the opponent's approach line
     return new Translation2d(
         oppXy.getX() + 0.85 * (goalXy.getX() - oppXy.getX()),
         oppXy.getY() + 0.85 * (goalXy.getY() - oppXy.getY()));
+  }
+
+  private Translation2d applyAllyCorridorKeepOut(
+      Translation2d candidate,
+      List<TrackedRobot> allies,
+      Translation2d egoXy,
+      AllianceSide ourAlliance,
+      MatchPeriod period,
+      double matchTimeRemainingSec) {
+    if (allies.isEmpty()) {
+      return candidate;
+    }
+    Translation2d adjusted = candidate;
+    for (TrackedRobot ally : allies) {
+      OpponentProfile allyProfile = scoutingPriors.resolveOrDefaultForTrack(ally.trackId());
+      double clearance =
+          kinematics.bumperRadiusMeters()
+              + allyProfile.bumperRadiusMeters()
+              + ALLY_KEEP_OUT_MARGIN_METERS;
+      Translation2d allyStart = ally.pose3d().getTranslation().toTranslation2d();
+      Translation2d allyEnd = ally.predictPositionAt(ALLY_CORRIDOR_LOOKAHEAD_SEC);
+      Translation2d closest = closestPointOnSegment(adjusted, allyStart, allyEnd);
+      double dist = adjusted.getDistance(closest);
+      if (dist >= clearance) {
+        continue;
+      }
+      double vx = allyEnd.getX() - allyStart.getX();
+      double vy = allyEnd.getY() - allyStart.getY();
+      double vLen = Math.hypot(vx, vy);
+      double nx;
+      double ny;
+      if (vLen > MIN_DIRECTION_NORM) {
+        // Lateral normal perpendicular to the ally's travel corridor
+        nx = -vy / vLen;
+        ny = vx / vLen;
+      } else {
+        double dx = adjusted.getX() - allyStart.getX();
+        double dy = adjusted.getY() - allyStart.getY();
+        double dLen = Math.hypot(dx, dy);
+        if (dLen > MIN_DIRECTION_NORM) {
+          nx = dx / dLen;
+          ny = dy / dLen;
+        } else {
+          nx = 0.0;
+          ny = 1.0;
+        }
+      }
+      double push = (clearance - dist) + 0.05;
+      Translation2d optionA =
+          new Translation2d(
+              clampFieldX(adjusted.getX() + nx * push), clampFieldY(adjusted.getY() + ny * push));
+      Translation2d optionB =
+          new Translation2d(
+              clampFieldX(adjusted.getX() - nx * push), clampFieldY(adjusted.getY() - ny * push));
+      Translation2d clampedA =
+          LaneClearanceChecker.clampOutsideRestrictedZones(
+              optionA,
+              egoXy,
+              season,
+              ourAlliance,
+              period,
+              matchTimeRemainingSec,
+              kinematics.bumperRadiusMeters());
+      Translation2d clampedB =
+          LaneClearanceChecker.clampOutsideRestrictedZones(
+              optionB,
+              egoXy,
+              season,
+              ourAlliance,
+              period,
+              matchTimeRemainingSec,
+              kinematics.bumperRadiusMeters());
+      double distA = clampedA.getDistance(closest);
+      double distB = clampedB.getDistance(closest);
+      adjusted = distA >= distB ? clampedA : clampedB;
+    }
+    return adjusted;
+  }
+
+  private static Translation2d closestPointOnSegment(
+      Translation2d p, Translation2d a, Translation2d b) {
+    double abx = b.getX() - a.getX();
+    double aby = b.getY() - a.getY();
+    double abLenSq = abx * abx + aby * aby;
+    if (abLenSq <= 1e-9) {
+      return a;
+    }
+    double t = ((p.getX() - a.getX()) * abx + (p.getY() - a.getY()) * aby) / abLenSq;
+    t = Math.max(0.0, Math.min(1.0, t));
+    return new Translation2d(a.getX() + t * abx, a.getY() + t * aby);
+  }
+
+  private double clampFieldX(double x) {
+    double margin = kinematics.bumperRadiusMeters();
+    return Math.max(margin, Math.min(season.fieldLengthMeters() - margin, x));
+  }
+
+  private double clampFieldY(double y) {
+    double margin = kinematics.bumperRadiusMeters();
+    return Math.max(margin, Math.min(season.fieldWidthMeters() - margin, y));
   }
 
   private Translation2d computePinRetreatPoint(
