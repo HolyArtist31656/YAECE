@@ -150,7 +150,8 @@ public final class DefenseInterceptor {
       double oppDistToGoal = Math.max(0.5, oppXy.getDistance(goalXy));
       double scoutedSpeedFloor =
           Math.max(MIN_INTERCEPT_SPEED_MPS, SCOUTED_CRUISE_SPEED_RATIO * profile.maxSpeedMps());
-      double oppSpeed = Math.max(scoutedSpeedFloor, Math.min(opp.speedMps(), profile.maxSpeedMps()));
+      double oppSpeed =
+          Math.max(scoutedSpeedFloor, Math.min(opp.speedMps(), profile.maxSpeedMps()));
       String siteId = inferredSite != null ? inferredSite.id() : "";
       double scoutingWeight =
           scoutingPriors.threatMultiplierFor(opp.trackId(), period, matchTimeRemainingSec, siteId);
@@ -165,12 +166,7 @@ public final class DefenseInterceptor {
             solveKinematicIntercept(egoXy, oppXy, goalXy, oppSpeed, standoffMeters);
         Translation2d allySafe =
             applyAllyCorridorKeepOut(
-                rawIntercept,
-                world.allies(),
-                egoXy,
-                ourAlliance,
-                period,
-                matchTimeRemainingSec);
+                rawIntercept, world.allies(), egoXy, ourAlliance, period, matchTimeRemainingSec);
         Translation2d clamped =
             LaneClearanceChecker.clampOutsideRestrictedZones(
                 allySafe,
@@ -316,7 +312,8 @@ public final class DefenseInterceptor {
       double oppSpeedMps,
       double standoffMeters) {
     double totalOppDist = oppXy.getDistance(goalXy);
-    double minS = totalOppDist > MIN_DIRECTION_NORM ? Math.min(0.85, standoffMeters / totalOppDist) : 0.2;
+    double minS =
+        totalOppDist > MIN_DIRECTION_NORM ? Math.min(0.85, standoffMeters / totalOppDist) : 0.2;
     for (int i = 2; i <= 10; i++) {
       double s = Math.max(minS, i / 10.0);
       Translation2d pt =

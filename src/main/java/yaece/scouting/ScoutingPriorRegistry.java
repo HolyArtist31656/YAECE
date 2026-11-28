@@ -189,12 +189,19 @@ public final class ScoutingPriorRegistry {
       }
       double ppm =
           MinimalJson.optionalDouble(
-              entry, "expectedPointsPerMinute", OpponentProfile.DEFAULT_EXPECTED_POINTS_PER_MINUTE, ctx);
+              entry,
+              "expectedPointsPerMinute",
+              OpponentProfile.DEFAULT_EXPECTED_POINTS_PER_MINUTE,
+              ctx);
       double siteMult =
           MinimalJson.optionalDouble(
-              entry, "preferredSiteThreatMultiplier", OpponentProfile.DEFAULT_SITE_THREAT_MULTIPLIER, ctx);
+              entry,
+              "preferredSiteThreatMultiplier",
+              OpponentProfile.DEFAULT_SITE_THREAT_MULTIPLIER,
+              ctx);
       double maxSpeed =
-          MinimalJson.optionalDouble(entry, "maxSpeedMps", OpponentProfile.DEFAULT_MAX_SPEED_MPS, ctx);
+          MinimalJson.optionalDouble(
+              entry, "maxSpeedMps", OpponentProfile.DEFAULT_MAX_SPEED_MPS, ctx);
       double susceptibility =
           MinimalJson.optionalDouble(
               entry, "defenseSusceptibility", OpponentProfile.DEFAULT_DEFENSE_SUSCEPTIBILITY, ctx);
@@ -220,7 +227,8 @@ public final class ScoutingPriorRegistry {
               siteWeights));
     }
     if (root.containsKey("matchRoster") && root.get("matchRoster") != null) {
-      Map<String, Object> rosterObj = MinimalJson.asObject(root.get("matchRoster"), "scouting.matchRoster");
+      Map<String, Object> rosterObj =
+          MinimalJson.asObject(root.get("matchRoster"), "scouting.matchRoster");
       registry.setMatchRoster(MatchRoster.fromJsonMap(rosterObj, "scouting.matchRoster"));
     }
     return registry;

@@ -186,7 +186,9 @@ public record MatchRoster(
       List<Integer> teams, ScoutingPriorRegistry registry) {
     Map<Integer, OpponentProfile> out = new LinkedHashMap<>(teams.size());
     for (int team : teams) {
-      out.put(team, registry.findTeamProfile(team).orElseGet(() -> OpponentProfile.unknownDefaults(team)));
+      out.put(
+          team,
+          registry.findTeamProfile(team).orElseGet(() -> OpponentProfile.unknownDefaults(team)));
     }
     return Collections.unmodifiableMap(out);
   }
