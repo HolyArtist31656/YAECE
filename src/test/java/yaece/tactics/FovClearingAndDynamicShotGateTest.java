@@ -41,7 +41,7 @@ class FovClearingAndDynamicShotGateTest {
     world.updateEgoPose(new Pose3d(new Translation3d(2.0, 4.0, 0.0), Rotation3d.ZERO), 1.00);
     // Piece A: directly in front at (4.0, 4.0) -> inside unoccluded FOV
     // Piece B: behind robot at (0.8, 4.0) -> outside FOV
-    // Piece C: at (5.5, 4.6) -> slightly offset, occluded by opponent robot at (3.75, 4.3)
+    // Piece C: at (5.5, 5.4) -> inside FOV, occluded by opponent robot at (3.75, 4.7)
     world.addGamePieceObservations(
         List.of(
             GamePieceObservation6DoF.field6DoF(
@@ -49,11 +49,11 @@ class FovClearingAndDynamicShotGateTest {
             GamePieceObservation6DoF.field6DoF(
                 0, new Pose3d(new Translation3d(0.8, 4.0, 0.06), Rotation3d.ZERO), 0.95, 1.00),
             GamePieceObservation6DoF.field6DoF(
-                0, new Pose3d(new Translation3d(5.5, 4.6, 0.06), Rotation3d.ZERO), 0.95, 1.00)));
+                0, new Pose3d(new Translation3d(5.5, 5.4, 0.06), Rotation3d.ZERO), 0.95, 1.00)));
     world.addRobotObservations(
         List.of(
             RobotObservation.fieldRobot(
-                new Pose3d(new Translation3d(3.75, 4.3, 0.0), Rotation3d.ZERO),
+                new Pose3d(new Translation3d(3.75, 4.7, 0.0), Rotation3d.ZERO),
                 RobotAffiliation.OPPONENT,
                 0.95,
                 1.00)));
